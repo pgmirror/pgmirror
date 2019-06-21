@@ -1,11 +1,10 @@
 package com.github.irumiha.pgmirror
 
-import java.sql.{Connection, DriverManager}
+import java.sql.{Connection, DriverManager, ResultSet}
 
-import com.github.irumiha.pgmirror.model.{Column, Database, Table, Udt}
-import io.tmos.arm.ArmMethods._
-import ResultSetIterator._
-import SqlTypes._
+import com.github.irumiha.pgmirror.ResultSetIterator._
+import com.github.irumiha.pgmirror.model.gatherer._
+import com.github.irumiha.pgmirror.model.generator.Database
 
 abstract class DatabaseSchemaGatherer(settings: Settings) {
 
@@ -13,35 +12,17 @@ abstract class DatabaseSchemaGatherer(settings: Settings) {
   protected lazy val database: Connection = DriverManager.getConnection(settings.url, settings.user, settings.password)
 
   def loadDatabase: Database = {
-    val tableConstraints =
-      """select constraint_schema, constraint_name, table_schema, table_name, constraint_type
-        |from information_schema.table_constraints
-        |""".stripMargin
+    def runStatement[R](querySql: String, tr: ResultSet => R): List[R] = {
+      val ps = database.prepareStatement(querySql)
+      val list = ps.executeQuery().toIterator.map(tr).toList
+      ps.close()
+      list
+    }
 
-    val referentialConstraints =
-      """select constraint_schema, constraint_name, unique_constraint_schema, unique_constraint_name
-        |from information_schema.referential_constraints
-        |""".stripMargin
-
-    val keyColumnUsage =
-      """select constraint_schema, constraint_name, table_schema, table_name, column_name
-        |from information_schema.key_column_usage
-        |""".stripMargin
-
-    val tables =
-      """select table_schema, table_name, table_type, is_insertable_into
-        |from information_schema.tables
-        |""".stripMargin
-
-    val columns =
-      """select table_schema, table_name, column_name, ordinal_position, column_default, is_nullable, data_type, udt_schema, udt_name
-        |from information_schema.columns
-        |""".stripMargin
-
-    val udtAttributes =
-      """select udt_schema, udt_name, attribute_name, ordinal_position, is_nullable, data_type, attribute_udt_schema, attribute_udt_name
-        |from information_schema.attributes
-        |""".stripMargin
+    val foreignKeys = runStatement(PgForeignKeys.sql, PgForeignKeys.fromResultSet)
+    val tables = runStatement(PgTables.sql, PgTables.fromResultSet)
+    val columns = runStatement(PgColumns.sql, PgColumns.fromResultSet)
+    val udtAttributes = runStatement(PgUdtAttributes.sql, PgUdtAttributes.fromResultSet)
 
     Database(List(), List(), List())
   }

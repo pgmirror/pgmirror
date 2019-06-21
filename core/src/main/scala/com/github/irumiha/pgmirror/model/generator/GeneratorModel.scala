@@ -1,6 +1,8 @@
-package com.github.irumiha.pgmirror.model
+package com.github.irumiha.pgmirror.model.generator
 
-case class Table(schemaName: String, tableName: String, columns: List[Column], comment: Option[String])
+case class ForeignKey(column: Column, foreignTable: Table, foreignColumn: Column)
+
+case class Table(schemaName: String, tableName: String, columns: List[Column], comment: Option[String], foreignKeys: List[ForeignKey])
 
 case class View(schemaName: String, tableName: String, columns: List[Column], comment: Option[String], isUpdatable: Boolean, isInsertable: Boolean)
 
