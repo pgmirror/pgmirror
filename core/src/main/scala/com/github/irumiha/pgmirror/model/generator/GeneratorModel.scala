@@ -4,7 +4,7 @@ case class ForeignKey(column: Column, foreignTable: Table, foreignColumn: Column
 
 case class Table(schemaName: String, tableName: String, columns: List[Column], comment: Option[String], foreignKeys: List[ForeignKey])
 
-case class View(schemaName: String, tableName: String, columns: List[Column], comment: Option[String], isUpdatable: Boolean, isInsertable: Boolean)
+case class View(schemaName: String, viewName: String, columns: List[Column], comment: Option[String], isUpdatable: Boolean, isInsertable: Boolean)
 
 case class Udt(schemaName: String, udtName: String, columns: List[Column], comment: Option[String])
 
