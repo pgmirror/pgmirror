@@ -14,6 +14,7 @@ lazy val core = (project in file("core"))
       "com.github.pathikrit" %% "better-files" % "3.8.0",
       "io.tmos" %% "arm4s" % "1.1.0",
       "org.postgresql" % "postgresql" % "42.2.6",
+      "org.scalatest" %% "scalatest" % "3.0.8" % Test,
     )
   )
 

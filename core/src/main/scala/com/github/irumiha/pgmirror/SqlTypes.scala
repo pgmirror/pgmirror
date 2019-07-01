@@ -9,6 +9,7 @@ object SqlTypes {
       case (           _,   _, "int8")                     => Right("Long")
       case (           _,   _, "bigserial")                => Right("Long")
       case (           _,   _, "boolean")                  => Right("Boolean")
+      case (           _,   _, "bool")                     => Right("Boolean")
       case (           _,   _, "bytea")                    => Right("Array[Byte]")
       case (           _,   _, "character")                => Right("String")
       case (           _,   _, "character varying")        => Right("String")
@@ -27,9 +28,10 @@ object SqlTypes {
       case (           _,   _, "int2")                     => Right("Int")
       case (           _,   _, "smallserial")              => Right("Int")
       case (           _,   _, "serial")                   => Right("Int")
-      case (           _,   _, "text")                     => Right("Int")
+      case (           _,   _, "text")                     => Right("String")
       case (           _,   _, "time")                     => Right("java.sql.Time")
       case (           _,   _, "timetz")                   => Right("java.sql.Time")
+      case (           _,   _, "time with time zone")      => Right("java.sql.Time")
       case (           _,   _, "timestamp")                => Right("java.time.Instant")
       case (           _,   _, "timestamptz")              => Right("java.time.Instant")
       case (           _,   _, "timestamp with time zone") => Right("java.time.Instant")
@@ -50,15 +52,8 @@ object SqlTypes {
         val finalType = if (underlyingPackage.isEmpty) underlying else s"$underlyingPackage.$underlying"
         Right(s"Seq[$finalType]")
       case (         pgs, pgt, "USER-DEFINED")             =>
-        val underlying =
-        {
-          val v = pgt.replaceFirst("_", "")
+        val underlying = CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.UPPER_CAMEL, pgt)
 
-          if (v.contains("_"))
-            CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.UPPER_CAMEL, v)
-          else
-            v
-        }
         val underlyingPackage = pgs
         val finalType = if (underlyingPackage.isEmpty) underlying else s"$underlyingPackage.$underlying"
         Right(s"$finalType")
