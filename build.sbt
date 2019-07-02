@@ -10,7 +10,6 @@ lazy val core = (project in file("core"))
     name := "pgmirror-core",
     libraryDependencies ++= Seq(
       "org.scalatra.scalate" %% "scalate-core" % "1.9.4-RC1",
-      "com.google.guava" % "guava" % "28.0-jre",
       "com.github.pathikrit" %% "better-files" % "3.8.0",
       "io.tmos" %% "arm4s" % "1.1.0",
       "org.postgresql" % "postgresql" % "42.2.6",
