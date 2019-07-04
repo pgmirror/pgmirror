@@ -11,10 +11,9 @@ case class Settings(
   schemaNameInclude: Regex = "^public$".r,
   tableNameInclude: Regex = ".*".r,
   udtNameInclude: Regex = ".*".r,
-  viewNameInclude: Regex = ".*".r
+  defaultSchema: String = "public"
 ) {
   lazy val schemaFilter = schemaNameInclude.pattern
   lazy val tableFilter = tableNameInclude.pattern
   lazy val udtFilter = udtNameInclude.pattern
-  lazy val viewFilter = viewNameInclude.pattern
 }
