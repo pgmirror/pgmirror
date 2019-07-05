@@ -6,7 +6,7 @@ import com.github.irumiha.pgmirror.ResultSetIterator._
 import com.github.irumiha.pgmirror.model.gatherer._
 import com.github.irumiha.pgmirror.model.generator.{Column, Database, ForeignKey, Table, TableLike, Udt, View}
 
-abstract class DatabaseSchemaGatherer(settings: Settings) {
+class DatabaseSchemaGatherer(settings: Settings) {
 
   protected lazy val driverCls: Class[_] = Class.forName("org.postgresql.Driver")
   protected lazy val database: Connection = DriverManager.getConnection(settings.url, settings.user, settings.password)
@@ -31,8 +31,9 @@ abstract class DatabaseSchemaGatherer(settings: Settings) {
     // TODO implement UDTs
     // val pgUdtAttributes = runStatement(PgUdtAttributes.sql, PgUdtAttributes.fromResultSet)
 
-    val columns = pgColumns.map(pgc =>
-      SqlTypes.typeMapping(pgc.udtSchema, pgc.udtName, pgc.dataType).map(dt =>
+    val columns = pgColumns.map { pgc =>
+      val schema = if (pgc.udtSchema == settings.defaultSchema) "" else pgc.udtSchema
+      SqlTypes.typeMapping(schema, pgc.udtName, pgc.dataType).map(dt =>
         Column(
           tableSchema = pgc.tableSchema,
           tableName = pgc.tableName,
@@ -46,7 +47,7 @@ abstract class DatabaseSchemaGatherer(settings: Settings) {
           comment = if (pgc.description.nonEmpty) Some(pgc.description) else None
         )
       )
-    )
+    }
     val allErrors = columns.collect { case Left(err) => err }
     if (allErrors.nonEmpty) {
       Left(allErrors)
@@ -58,6 +59,7 @@ abstract class DatabaseSchemaGatherer(settings: Settings) {
             tableType = if (pgt.tableType == "BASE TABLE") Table else if (pgt.tableType == "VIEW") View else Udt,
             schemaName = pgt.tableSchema,
             tableName = pgt.tableName,
+            tableClassName = pgt.tableName.split("_").filterNot(_.isEmpty).map(_.capitalize).mkString,
             columns = goodColumns.filter(c => c.tableSchema == pgt.tableSchema && c.tableName == pgt.tableName),
             comment = if (pgt.description.nonEmpty) Some(pgt.description) else None,
             foreignKeys = List()

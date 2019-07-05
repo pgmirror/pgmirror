@@ -9,6 +9,7 @@ case class TableLike(
   tableType: TableType,
   schemaName: String,
   tableName: String,
+  tableClassName: String,
   columns: List[Column],
   comment: Option[String],
   foreignKeys: List[ForeignKey] = List(),
