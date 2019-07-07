@@ -42,5 +42,5 @@ case class Database(
   tables: List[TableLike],
   views: List[TableLike],
   udts: List[TableLike],
-  foreignKey: List[ForeignKey]
+  foreignKeys: List[ForeignKey]
 )

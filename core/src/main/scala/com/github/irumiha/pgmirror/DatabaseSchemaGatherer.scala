@@ -8,7 +8,7 @@ import com.github.irumiha.pgmirror.model.generator.{Column, Database, ForeignKey
 
 class DatabaseSchemaGatherer(settings: Settings) {
 
-  protected lazy val driverCls: Class[_] = Class.forName("org.postgresql.Driver")
+  private val driverCls: Class[_] = Class.forName("org.postgresql.Driver")
   protected lazy val database: Connection = DriverManager.getConnection(settings.url, settings.user, settings.password)
 
   def gatherDatabase: Either[List[Throwable], Database] = {
@@ -33,9 +33,11 @@ class DatabaseSchemaGatherer(settings: Settings) {
 
     val columns = pgColumns.map { pgc =>
       val schema = if (pgc.udtSchema == settings.defaultSchema) "" else pgc.udtSchema
+      val tableSchema = if (pgc.tableSchema == settings.defaultSchema) "" else pgc.tableSchema
+
       SqlTypes.typeMapping(schema, pgc.udtName, pgc.dataType).map(dt =>
         Column(
-          tableSchema = pgc.tableSchema,
+          tableSchema = tableSchema,
           tableName = pgc.tableName,
           name = pgc.columnName,
           columnType = pgc.dataType,
@@ -44,7 +46,7 @@ class DatabaseSchemaGatherer(settings: Settings) {
           isNullable = pgc.isNullable,
           isPrimaryKey = pgc.isPrimaryKey,
           ordinalPosition = pgc.ordinalPosition,
-          comment = if (pgc.description.nonEmpty) Some(pgc.description) else None
+          comment = pgc.description.filterNot(_.isEmpty)
         )
       )
     }
@@ -55,13 +57,14 @@ class DatabaseSchemaGatherer(settings: Settings) {
       val goodColumns = columns.collect { case Right(c) => c }
       val tablesAndViews =
         pgTables.map { pgt =>
+          val tableSchema = if (pgt.tableSchema == settings.defaultSchema) "" else pgt.tableSchema
           TableLike(
             tableType = if (pgt.tableType == "BASE TABLE") Table else if (pgt.tableType == "VIEW") View else Udt,
-            schemaName = pgt.tableSchema,
+            schemaName = tableSchema,
             tableName = pgt.tableName,
             tableClassName = pgt.tableName.split("_").filterNot(_.isEmpty).map(_.capitalize).mkString,
-            columns = goodColumns.filter(c => c.tableSchema == pgt.tableSchema && c.tableName == pgt.tableName),
-            comment = if (pgt.description.nonEmpty) Some(pgt.description) else None,
+            columns = goodColumns.filter(c => c.tableSchema == tableSchema && c.tableName == pgt.tableName),
+            comment = pgt.description.filterNot(_.isEmpty),
             foreignKeys = List()
           )
         }
@@ -73,9 +76,11 @@ class DatabaseSchemaGatherer(settings: Settings) {
       val tableFKs =
         for {
           fgk          <- pgForeignKeys
-          table        <- tables.find(t => t.schemaName == fgk.tableSchema && t.tableName == fgk.tableName).toList
+          fkTableSchema = if (fgk.tableSchema == settings.defaultSchema) "" else fgk.tableSchema
+          fkForeignTableSchema = if (fgk.foreignTableSchema == settings.defaultSchema) "" else fgk.foreignTableSchema
+          table        <- tables.find(t => t.schemaName == fkTableSchema && t.tableName == fgk.tableName).toList
           col          <- table.columns.find(_.name == fgk.columnName).toList
-          foreignTable <- tables.find(t => t.schemaName == fgk.foreignTableSchema && t.tableName == fgk.foreignTableName).toList
+          foreignTable <- tables.find(t => t.schemaName == fkForeignTableSchema && t.tableName == fgk.foreignTableName).toList
           foreignCol   <- foreignTable.columns.find(_.name == fgk.foreignColumnName).toList
         } yield
           ForeignKey(

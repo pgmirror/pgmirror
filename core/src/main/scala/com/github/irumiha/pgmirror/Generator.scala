@@ -1,33 +1,30 @@
 package com.github.irumiha.pgmirror
 
-import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets
 
 import better.files.File
 import com.github.irumiha.pgmirror.model.generator.{ForeignKey, TableLike}
 import org.fusesource.scalate.{TemplateEngine, TemplateSource}
 
-/**
- * A trait for source code generators.
- */
-trait Generator {
-  /**
-   * Generates source code.
-   */
-  def generate(settings: Settings, tables: List[TableLike]): Unit
-
-}
-
 case class GeneratedFile(relativePath: String, filename: String, content: String)
 
-/**
- * A simplest base class for source code generators.
- */
-abstract class GeneratorBase extends Generator {
+abstract class Generator {
 
-  /**
-   * Generates source files.
-   */
-  def generate(settings: Settings, tables: List[TableLike], foreignKeys: List[ForeignKey]): Unit = {
+  def generate(settings: Settings): Unit = {
+    (for (
+      database <- new DatabaseSchemaGatherer(settings).gatherDatabase
+    ) yield {
+      generateForAllTables(settings, database.tables, database.foreignKeys)
+    }) match {
+      case Left(errors) =>
+        errors.foreach(println)
+      case _ =>
+        println("Done!")
+    }
+
+  }
+
+  def generateForAllTables(settings: Settings, tables: List[TableLike], foreignKeys: List[ForeignKey]): Unit = {
     import settings._
 
     val rootOutputDir = rootPackage match {
@@ -37,32 +34,25 @@ abstract class GeneratorBase extends Generator {
 
     rootOutputDir.createDirectories()
 
-    tables.foreach { table =>
-      val sources = generate(settings, table, foreignKeys)
+    val allTableFiles = tables.flatMap(generateForTable(settings, _, foreignKeys))
+    val utilFile = generateUtil(settings).toList
 
-      sources.foreach { ts =>
-        rootOutputDir / ""
-      }
-
-      val file = rootOutputDir / (table.className + ".scala")
-      file.write(source)(charset = Charset.forName(settings.charset))
+    (allTableFiles ++ utilFile).foreach { ts =>
+      val fileOutputDir = rootOutputDir / ts.relativePath
+      fileOutputDir.createDirectories()
+      val file = fileOutputDir / ts.filename
+      file.write(ts.content)(charset = StandardCharsets.UTF_8)
     }
   }
 
-  def generate(settings: Settings, table: TableLike, foreignKeys: List[ForeignKey]): List[GeneratedFile]
+  def generateForTable(settings: Settings, table: TableLike, foreignKeys: List[ForeignKey]): List[GeneratedFile]
+
+  def generateUtil(settings: Settings): Option[GeneratedFile]
 
 }
 
-/**
- * Provides Scalate support for Generator implementations.
- *
- * Generators can render a Scalate template by render() method.
- */
 trait ScalateSupport {
 
-  /**
-   * Renders a template with given attributes.
-   */
   protected def render(settings: Settings, template: TemplateSource, attributes: Map[String, Any]): String = {
     val engine = new TemplateEngine
     engine.allowCaching =  false

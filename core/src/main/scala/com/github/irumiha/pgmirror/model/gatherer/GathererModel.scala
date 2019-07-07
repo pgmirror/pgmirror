@@ -42,10 +42,10 @@ object PgForeignKeys {
 
 }
 
-case class PgTables(tableSchema: String, tableName: String, tableType: String, isInsertableInto: Boolean, description: String)
+case class PgTables(tableSchema: String, tableName: String, tableType: String, isInsertableInto: Boolean, description: Option[String])
 object PgTables {
   def fromResultSet(rs: ResultSet): PgTables =
-    PgTables(rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4) == "YES", rs.getString(5))
+    PgTables(rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4) == "YES", Option(rs.getString(5)))
 
   val sql: String =
     """select table_schema, table_name, table_type, is_insertable_into, obj_description(pg_class.oid, 'pg_class') as table_description
@@ -63,7 +63,7 @@ case class PgColumns(
   dataType: String,
   udtSchema: String,
   udtName: String,
-  description: String
+  description: Option[String]
 )
 object PgColumns {
   def fromResultSet(rs: ResultSet): PgColumns =
@@ -78,7 +78,7 @@ object PgColumns {
       dataType = rs.getString(7),
       udtSchema = rs.getString(8),
       udtName = rs.getString(9),
-      description = rs.getString(11)
+      description = Option(rs.getString(11))
     )
 
   val sql: String =
