@@ -24,15 +24,7 @@ lazy val doobie = (project in file("doobie"))
   .settings(
     crossScalaVersions := supportedScalaVersions,
     name := "pgmirror-doobie",
-    libraryDependencies ++= Seq(
-      "org.tpolecat" %% "doobie-core"     % doobieVersion,
-      "org.tpolecat" %% "doobie-postgres" % doobieVersion,
-      "org.tpolecat" %% "doobie-specs2"   % doobieVersion,
-      "io.circe" %% "circe-core" % circeVersion,
-      "io.circe" %% "circe-generic" % circeVersion,
-      "io.circe" %% "circe-parser" % circeVersion,
-      "io.circe" %% "circe-java8" % circeVersion,
-    ))
+  )
   .dependsOn(core)
 
 lazy val pgmirror = (project in file("."))

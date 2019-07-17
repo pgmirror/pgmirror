@@ -1,13 +1,11 @@
 package com.github.irumiha.pgmirror.doobie
 
 import com.github.irumiha.pgmirror.model.generator.{Column, ForeignKey, TableLike}
-import com.github.irumiha.pgmirror.{GeneratedFile, Generator, ScalateSupport, Settings}
+import com.github.irumiha.pgmirror.{GeneratedFile, Generator, Settings}
 
 class DoobieGenerator extends Generator {
 
-  override def generateUtil(settings: Settings): Option[GeneratedFile] = {
-    None
-  }
+  override def generateUtil(settings: Settings): Option[GeneratedFile] = None
 
   override def generateForTable(settings: Settings, table: TableLike, foreignKeys: List[ForeignKey]): List[GeneratedFile] = {
     List(
@@ -37,7 +35,14 @@ class DoobieGenerator extends Generator {
 
   def tableColumn(c: Column): String = s""""${c.tableName}"."${c.name}""""
 
+  def tableWithSchema(table: TableLike) = List(table.schemaName, s""""${table.tableName}"""").filterNot(_.isEmpty).mkString(".")
+
   def generateTableClass(settings: Settings, table: TableLike): String = {
+
+    val circeEncodersDecoders =
+      s"""  implicit val jsonEncoder = deriveEncoder[${table.tableClassName}]
+         |  implicit val jsonDecoder = deriveDecoder[${table.tableClassName}]""".stripMargin
+
     s"""
        |package ${tablePackage(settings.rootPackage, table.schemaName)}
        |
@@ -49,8 +54,7 @@ class DoobieGenerator extends Generator {
        |)
        |
        |object ${table.tableClassName} {
-       |  implicit val jsonEncoder = deriveEncoder[${table.tableClassName}]
-       |  implicit val jsonDecoder = deriveDecoder[${table.tableClassName}]
+       |$circeEncodersDecoders
        |}
        |
        |""".stripMargin
@@ -58,12 +62,28 @@ class DoobieGenerator extends Generator {
 
   def generateTableRepository(settings: Settings, table: TableLike): String = {
     val pkColumn = table.columns.find(_.isPrimaryKey)
+
+    val insertDef =
+      s"""
+         |  def insert(item: ${table.tableClassName}): ConnectionIO[${table.tableClassName}] = {
+         |    sql$tq
+         |      insert into ${tableWithSchema(table)}
+         |             (${table.columns.map(tableColumn).mkString(",\n              ")})
+         |             values
+         |             (${table.columns.map(tc => s"$${item.${propName(tc)}}").mkString(",\n              ")})
+         |      returning ${table.columns.map(tableColumn).mkString(",\n                ")}
+         |    $tq
+         |    .query[${table.tableClassName}]
+         |    .unique
+         |  }
+         |""".stripMargin
+
     val getDef = pkColumn.map { p =>
       s"""
          |  def get(${prop(p)}): ConnectionIO[Option[${table.tableClassName}]] = {
          |    sql$tq
          |      select ${table.columns.map(tableColumn).mkString(",\n             ")}
-         |        from ${table.schemaName}.\"${table.tableName}\"
+         |        from ${tableWithSchema(table)}
          |       where ${tableColumn(p)} = $$${propName(p)}
          |    $tq
          |    .query[${table.tableClassName}]
@@ -76,7 +96,7 @@ class DoobieGenerator extends Generator {
       s"""
          |  def delete(${prop(p)}): ConnectionIO[Option[${table.tableClassName}]] = {
          |    sql$tq
-         |      delete from ${table.schemaName}.\"${table.tableName}\"
+         |      delete from ${tableWithSchema(table)}
          |       where ${tableColumn(p)} = $$${propName(p)}
          |      returning ${table.columns.map(tableColumn).mkString(",\n                ")}
          |    $tq
@@ -86,11 +106,12 @@ class DoobieGenerator extends Generator {
          |""".stripMargin
     }.getOrElse("")
 
+
     val updateDef = pkColumn.map { p =>
       s"""
          |  def update(item: ${table.tableClassName}): ConnectionIO[Option[${table.tableClassName}]] = {
          |    sql$tq
-         |      update ${table.schemaName}.\"${table.tableName}\"
+         |      update ${tableWithSchema(table)}
          |         set ${table.columns.filterNot(_.isPrimaryKey).map(tc => s"${tableColumn(tc)} = $${item.${propName(tc)}}").mkString(",\n             ")}
          |       where ${tableColumn(p)} = $${item.${propName(p)}}
          |      returning ${table.columns.map(tableColumn).mkString(",\n                ")}
@@ -113,13 +134,10 @@ class DoobieGenerator extends Generator {
        |import java.time.Instant
        |
        |class ${table.tableClassName}DoobieRepository {
-       |
+       |$insertDef
        |$getDef
-       |
        |$deleteDef
-       |
        |$updateDef
-       |
        |}
        |
        |""".stripMargin
