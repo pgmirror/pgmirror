@@ -8,9 +8,11 @@ class DoobieGenerator extends Generator {
   override def generateUtil(settings: Settings): Option[GeneratedFile] = None
 
   override def generateForTable(settings: Settings, table: TableLike, foreignKeys: List[ForeignKey]): List[GeneratedFile] = {
+    val doobiePath = Seq(table.schemaName, "doobie").filterNot(_.isEmpty).mkString("/")
+
     List(
       GeneratedFile(table.schemaName, table.tableClassName+".scala", generateTableClass(settings, table)),
-      GeneratedFile(table.schemaName, table.tableClassName+"DoobieRepository.scala", generateTableRepository(settings, table))
+      GeneratedFile(doobiePath, table.tableClassName+"DoobieRepository.scala", generateTableRepository(settings, table))
     )
   }
 
@@ -31,6 +33,8 @@ class DoobieGenerator extends Generator {
 
   def prop(c: Column): String = s"""${propName(c)}: ${propType(c)}"""
 
+  def propWithComment(c: Column): String = s"""${c.comment.map(co => s"// $co\n|  ").getOrElse("")}${propName(c)}: ${propType(c)}"""
+
   def tablePackage(rootPackage: String, schemaName: String) = List(rootPackage, schemaName).filterNot(_.isEmpty).mkString(".")
 
   def tableColumn(c: Column): String = s""""${c.tableName}"."${c.name}""""
@@ -43,14 +47,13 @@ class DoobieGenerator extends Generator {
       s"""  implicit val jsonEncoder = deriveEncoder[${table.tableClassName}]
          |  implicit val jsonDecoder = deriveDecoder[${table.tableClassName}]""".stripMargin
 
-    s"""
-       |package ${tablePackage(settings.rootPackage, table.schemaName)}
+    s"""package ${tablePackage(settings.rootPackage, table.schemaName)}
        |
        |import io.circe.java8.time._
        |import io.circe.generic.semiauto._
        |
        |case class ${table.tableClassName} (
-       |  ${table.columns.map(prop).mkString(",\n  ")}
+       |  ${table.columns.map(propWithComment).mkString(",\n  ")}
        |)
        |
        |object ${table.tableClassName} {
@@ -123,6 +126,16 @@ class DoobieGenerator extends Generator {
          |""".stripMargin
     }.getOrElse("")
 
+    val crudDefs =
+      s"""$insertDef
+         |$getDef
+         |$deleteDef
+         |$updateDef
+         |""".stripMargin
+
+    val viewDefs =
+      s""""""
+
     s"""
        |package ${tablePackage(settings.rootPackage, table.schemaName)}
        |
@@ -134,10 +147,7 @@ class DoobieGenerator extends Generator {
        |import java.time.Instant
        |
        |class ${table.tableClassName}DoobieRepository {
-       |$insertDef
-       |$getDef
-       |$deleteDef
-       |$updateDef
+       |${if(table.isView) viewDefs else crudDefs}
        |}
        |
        |""".stripMargin

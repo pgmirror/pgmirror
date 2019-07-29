@@ -34,6 +34,7 @@ object SqlTypes {
     case (_, _, "timestamptz") => Right("java.time.Instant")
     case (_, _, "timestamp with time zone") => Right("java.time.Instant")
     case (_, _, "uuid") => Right("java.util.UUID")
+    case (_, _, "json") => Right("String")
     case ("pg_catalog", pgt, "ARRAY") => typeMapping("", "", pgt.replaceFirst("_", "")).map(t => s"Seq[$t]")
     case (pgs, pgt, "ARRAY") =>
       val underlying =
@@ -56,6 +57,6 @@ object SqlTypes {
       val underlyingPackage = pgs
       val finalType = if (underlyingPackage.isEmpty) underlying else s"$underlyingPackage.$underlying"
       Right(s"$finalType")
-    case (_, _, _) => Left(new Exception(s"Mapping for $pgSchema, $pgType, $pgDataType not found!"))
+    case (_, _, _) => Left(new Exception(s"Mapping for ($pgSchema, $pgType, $pgDataType) not found!"))
   }
 }
