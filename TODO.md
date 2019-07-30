@@ -33,6 +33,9 @@ The annotated columns are put in the argument list for the filter over the view.
 
 **Example:**
 
+We have a table `auth.users` with a complex user definition and we want a simpler view for 
+display in a list of users. We create a view `users_view` for that. 
+
 ```postgresql
 CREATE OR REPLACE VIEW auth.users_view as (
     SELECT id, name, email, active, groups from auth.users
@@ -43,7 +46,7 @@ COMMENT ON COLUMN auth.users_view.name IS
 @FilterEq';
 
 COMMENT ON COLUMN auth.users_view.active IS 
-'@FilterEq'
+'@FilterEq';
 
 COMMENT ON COLUMN auth.user_view.created IS
 '@FilterGtEq';
@@ -61,11 +64,33 @@ case class UserView (
   active: Boolean,
   groups: String
 )
+```
+```scala
+package your.custom_package.auth.doobie
+
+import doobie._
+import doobie.implicits._
+import Fragments.{ in, whereAndOpt }
 
 object UserViewDoobieRepository {
-  def listFiltered(name: Option[String], active: Option[Boolean], created: Option[java.time.Instant]): Seq[UserView] = {
-    
-  } 
+  def listFiltered(
+      name: Option[String], 
+      active: Option[Boolean], 
+      created: Option[java.time.Instant],
+      offset: Option[Int] = None,
+      limit: Option[Int] = None
+): Query0[UserView]] = {
+    val nameFilter = name.map(v => fr"name=$v") 
+    val activeFilter = active.map(v => fr"active=$v") 
+    val createdFilter = created.map(v => fr"crated >= $v")
+    val q: Fragment = 
+      fr"""SELECT "id", "name", "email", "active", "groups" FROM "auth"."user_view" """ ++
+      whereAndOpt(nameFilter, activeFilter, createdFilter)                              ++
+      if (offset.isDefined) fr"OFFSET ${offset.get}" else Fragment.empty                ++
+      if (limit.isDefined) fr"LIMIT ${limit.get}" else Fragment.empty
+  
+    q.query[UserView]
+  }
 }
 ```
 
