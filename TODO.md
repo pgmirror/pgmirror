@@ -4,7 +4,7 @@
 
 We will base all examples on this schema: 
 
-```postgresql
+```sql
 CREATE TABLE auth.users (
     id uuid not null primary key,
     name text not null,
@@ -36,7 +36,7 @@ The annotated columns are put in the argument list for the filter over the view.
 We have a table `auth.users` with a complex user definition and we want a simpler view for 
 display in a list of users. We create a view `users_view` for that. 
 
-```postgresql
+```sql
 CREATE OR REPLACE VIEW auth.users_view as (
     SELECT id, name, email, active, groups from auth.users
 );
