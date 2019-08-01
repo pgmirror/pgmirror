@@ -43,6 +43,10 @@ CREATE OR REPLACE VIEW auth.users_view as (
     SELECT id, name, email, active, groups from auth.users
 );
 
+COMMENT ON VIEW auth.users_view IS
+'@Limit
+ @Offset';
+
 COMMENT ON COLUMN auth.users_view.name IS
 'Users real name. 
 @FilterEq';
