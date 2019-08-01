@@ -31,6 +31,8 @@ descriptions that contain annotations:
 
 The annotated columns are put in the argument list for the filter over the view.
 
+View-level annotations `@Limit` and `@Offset` will allow to specify the limit and offset to the query result.
+
 **Example:**
 
 We have a table `auth.users` with a complex user definition and we want a simpler view for 
