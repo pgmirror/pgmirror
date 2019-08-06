@@ -182,14 +182,23 @@ there.
 
 ### Entity versioning
 
-History tracking for entities can be enabled by adding a `@Versioning` annotation on the column that will be used to
-keep the entity version. The generated repository will not have `UPDATE` statements, only insert. `SQL` generated for 
-queries will always select the latest version using the provided versioning column.
+You can track entity versions by adding a `@Versioning` annotation on the column that will be used to
+keep the entity version. Supported column types are `int` and `timestamp(tz)`. You can se the values for these columns
+any way you like: the generated repository will always ignore the set values and use its own:
 
+- for `int` the `INSERT` will start at 1 and increment on every `UPDATE`
+- for `timestamp` `INSERT` and `UPDATE` will always use `now()`
+ 
 ### Optimistic concurrency (Version checking)
 On a table that has a `@Versioning` column you can add a `@VersionCheck` annotation on the table-level comment. The
-generated repository will have code that checks on update (remember, it will actually be an insert) if the latest version
-in the table is the one that was used to produce that new entity version. The return value for this operation will contain
-`Either` the `VersionCheckFailed` error or the success value.
+generated repository will have code that checks on update if the latest version in the table is the one that was used to
+produce that new entity version. The return value for this operation will contain `Either` the `VersionCheckFailed` 
+error or the success value.
  - **TODO**: work on this some more.
  
+### Entity history
+
+When a table has `@Versioning` and `@VersionCheck` enabled you can also add `@History` annotation on the table-level
+comment. This will turn all `UPDATE` queries into `INSERT` and all queries will be generated so that they always select
+the latest version of the entity. The table in question should have a composite primary key (identity+version).
+
