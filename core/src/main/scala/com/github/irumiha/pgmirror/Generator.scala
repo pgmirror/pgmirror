@@ -4,7 +4,6 @@ import java.nio.charset.StandardCharsets
 
 import better.files.File
 import com.github.irumiha.pgmirror.model.generator.{ForeignKey, TableLike}
-import org.fusesource.scalate.{TemplateEngine, TemplateSource}
 
 case class GeneratedFile(relativePath: String, filename: String, content: String)
 
@@ -48,16 +47,5 @@ abstract class Generator {
   def generateForTable(settings: Settings, table: TableLike, foreignKeys: List[ForeignKey]): List[GeneratedFile]
 
   def generateUtil(settings: Settings): Option[GeneratedFile]
-
-}
-
-trait ScalateSupport {
-
-  protected def render(settings: Settings, template: TemplateSource, attributes: Map[String, Any]): String = {
-    val engine = new TemplateEngine
-    engine.allowCaching =  false
-
-    engine.layout(template, attributes)
-  }
 
 }

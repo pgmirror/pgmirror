@@ -13,7 +13,6 @@ lazy val core = (project in file("core"))
     crossScalaVersions := supportedScalaVersions,
     name := "pgmirror-core",
     libraryDependencies ++= Seq(
-      "org.scalatra.scalate" %% "scalate-core" % "1.9.4",
       "com.github.pathikrit" %% "better-files" % "3.8.0",
       "org.postgresql" % "postgresql" % "42.2.6",
       "org.scalatest" %% "scalatest" % "3.0.8" % Test,
