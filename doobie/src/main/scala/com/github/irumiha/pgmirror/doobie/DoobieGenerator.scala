@@ -43,21 +43,16 @@ class DoobieGenerator extends Generator {
 
   def generateTableClass(settings: Settings, table: TableLike): String = {
 
-    val circeEncodersDecoders =
-      s"""  implicit val jsonEncoder = deriveEncoder[${table.tableClassName}]
-         |  implicit val jsonDecoder = deriveDecoder[${table.tableClassName}]""".stripMargin
-
     s"""package ${tablePackage(settings.rootPackage, table.schemaName)}
        |
-       |import io.circe.java8.time._
-       |import io.circe.generic.semiauto._
+       |import io.circe.Codec, io.circe.generic.semiauto.deriveCodec
        |
        |case class ${table.tableClassName} (
        |  ${table.columns.map(propWithComment).mkString(",\n  ")}
        |)
        |
        |object ${table.tableClassName} {
-       |$circeEncodersDecoders
+       |  implicit val ${table.tableClassName}Codec: Codec[${table.tableClassName}] = deriveCodec
        |}
        |
        |""".stripMargin
