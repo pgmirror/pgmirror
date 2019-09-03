@@ -134,36 +134,42 @@ Generated query for fetching a hierarchy in a `invoice -> item -> item_tax` rela
   SELECT row_to_json(master)
   FROM (
            SELECT invoice.*,
-                  CASE WHEN count(items_detail) = 0 THEN ARRAY []::JSON[] ELSE array_agg(items_detail.item) END AS items,
-                  CASE
-                      WHEN count(invoice_compensation_detail) = 0 THEN ARRAY []::JSON[]
-                      ELSE array_agg(invoice_compensation_detail.compensation) END                              AS compenstions,
-                  CASE
-                      WHEN count(invoice_tax_detail) = 0 THEN ARRAY []::JSON[]
-                      ELSE array_agg(invoice_tax_detail.tax) END                                                AS invoice_taxes
+                  CASE WHEN count(items_detail) = 0 
+                       THEN ARRAY []::JSON[] 
+                       ELSE array_agg(items_detail.item) 
+                  END AS items,
+                  CASE WHEN count(invoice_compensation_detail) = 0 
+                       THEN ARRAY []::JSON[]
+                       ELSE array_agg(invoice_compensation_detail.compensation) 
+                  END AS compensations,
+                  CASE WHEN count(invoice_tax_detail) = 0 
+                       THEN ARRAY []::JSON[]
+                       ELSE array_agg(invoice_tax_detail.tax) 
+                  END AS invoice_taxes
            FROM invoice
-                    LEFT OUTER JOIN (
-               SELECT items_detail_inner.invoice_id, row_to_json(items_detail_inner) item
-               FROM (SELECT invoice_item.*,
-                            CASE
-                                WHEN count(item_tax_detail) = 0 THEN ARRAY []::JSON[]
-                                ELSE array_agg(item_tax_detail.tax) END AS taxes
-                     FROM invoice_item
+                LEFT OUTER JOIN (
+                    SELECT items_detail_inner.invoice_id, row_to_json(items_detail_inner) item
+                     FROM (SELECT invoice_item.*,
+                                  CASE WHEN count(item_tax_detail) = 0 
+                                       THEN ARRAY []::JSON[]
+                                       ELSE array_agg(item_tax_detail.tax) 
+                                  END AS taxes
+                         FROM invoice_item
                               LEFT OUTER JOIN (
-                         SELECT item_tax.item_id, row_to_json(item_tax) tax
-                         FROM item_tax
-                     ) item_tax_detail ON invoice_item.id = item_tax_detail.item_id
-                     GROUP BY invoice_item.id
-                    ) items_detail_inner
-           ) items_detail ON items_detail.invoice_id = invoice.id
-                    LEFT OUTER JOIN (
-               SELECT invoice_compensation.invoice_id, row_to_json(invoice_compensation) compensation
-               FROM invoice_compensation
-           ) invoice_compensation_detail ON invoice.id = invoice_compensation_detail.invoice_id
-                    LEFT OUTER JOIN (
-               SELECT invoice_tax.invoice_id, row_to_json(invoice_tax) tax
-               FROM invoice_tax
-           ) invoice_tax_detail ON invoice_tax_detail.invoice_id = invoice.id
+                                  SELECT item_tax.item_id, row_to_json(item_tax) tax
+                                    FROM item_tax
+                              ) item_tax_detail ON invoice_item.id = item_tax_detail.item_id
+                         GROUP BY invoice_item.id
+                        ) items_detail_inner
+                ) items_detail ON items_detail.invoice_id = invoice.id
+                LEFT OUTER JOIN (
+                    SELECT invoice_compensation.invoice_id, row_to_json(invoice_compensation) compensation
+                     FROM invoice_compensation
+                ) invoice_compensation_detail ON invoice.id = invoice_compensation_detail.invoice_id
+                LEFT OUTER JOIN (
+                    SELECT invoice_tax.invoice_id, row_to_json(invoice_tax) tax
+                      FROM invoice_tax
+                ) invoice_tax_detail ON invoice_tax_detail.invoice_id = invoice.id
            GROUP BY invoice.id
        ) master
   WHERE master.id = 37;
