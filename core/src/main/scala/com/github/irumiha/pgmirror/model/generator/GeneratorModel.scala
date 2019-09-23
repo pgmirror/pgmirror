@@ -35,7 +35,8 @@ case class TableLike(
   foreignKeys: List[ForeignKey] = List(),
   isView: Boolean = false,
   viewIsUpdatable: Boolean = false,
-  isInsertable: Boolean = false
+  isInsertable: Boolean = false,
+  annotations: List[TableAnnotation] = Nil
 )
 
 case class Column(
@@ -48,7 +49,8 @@ case class Column(
   isNullable: Boolean,
   isPrimaryKey: Boolean,
   ordinalPosition: Int,
-  comment: Option[String]
+  comment: Option[String],
+  annotations: List[ColumnAnnotation] = Nil
 )
 
 case class ForeignKey(
