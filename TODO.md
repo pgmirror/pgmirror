@@ -1,6 +1,32 @@
 # TODO
 
-## Preamble
+## About
+
+Pgmirror is a code generator that will take your database schema and generate some code for you:
+
+- Generate your model classes for your domain models.
+- Generate the repositories using the Doobie library.
+- Generate the Http4s endpoints for CRUD operations.
+- What ever else you decide to add yourself. It is easy to extend.
+ 
+However, to be truly effective you also need to embrace certain patterns in system design. This project's aim is to be
+as simple as possible, both in the code and in the cognitive load on the programmer. We will pluck ideas from the DDD
+community, CQRS and what ever else when it will contribute to our goal of simple and maintainable project development.
+
+### Philosophy
+
+The generated code should account for majority if not all uses of your presistence layer. There should be no custom SQL
+code in your main source. This is not 100% possible but if you organize your code carefully then using the repository 
+pattern should account for almost all of your persistence needs.
+Use tables for storage (kind of obvious, isn't it!) but all views into the data should be done through SQL views. This
+typically means adopting a kind of CQRS approach where data is changed (created, updated, deleted) via commands whose
+handlers use model repositories to do the modifications. Any kind of view into the data is done through database views. 
+The repository code generated for views only allows read and filtered list operations. You can create simple views to
+support entity lists or per-entity edit views. Reports should also be done via views whenever possible. Sometimes we
+want to run periodic jobs that prepare reporting data. This is the only place where it's expected to have custom SQL
+code in your application. 
+
+## Implementation
 
 We will base all examples on this schema: 
 
@@ -16,11 +42,12 @@ CREATE TABLE auth.users (
 );
 ```
 
-### Views
+### Tables and Views
 
 Any query with complex joins that is known in advance should be defined as a view in the database. The view definition 
-should define a column projection and necessary joins with a minimal set of `WHERE` clauses. We can add column 
-descriptions that contain annotations:
+should define a column projection and necessary joins with a minimal set of `WHERE` clauses. 
+
+For both tables and views we can add column descriptions that contain annotations:
 
 - `@FilterEq`
 - `@FilterGt`
@@ -31,7 +58,7 @@ descriptions that contain annotations:
 
 The annotated columns are put in the argument list for the filter over the view.
 
-View-level annotations `@Limit` and `@Offset` will allow to specify the limit and offset to the query result. Be careful
+View or table level annotations `@Limit` and `@Offset` will allow to specify the limit and offset to the query result. Be careful
 with using `@Limit` and `@Offset` for pagination. There are serious performance implications when your results have more
 than a couple of thousand records in total.
 
@@ -46,12 +73,10 @@ CREATE OR REPLACE VIEW auth.user_list_view as (
 );
 
 COMMENT ON VIEW auth.user_list_view IS
-'@Limit
- @Offset';
+'@Limit @Offset';
 
 COMMENT ON COLUMN auth.user_list_view.name IS
-'Users real name. 
-@FilterEq';
+'Users real name. @FilterEq';
 
 COMMENT ON COLUMN auth.user_list_view.active IS 
 '@FilterEq';
@@ -83,9 +108,9 @@ import Fragments.{ in, whereAndOpt }
 
 object UserListViewDoobieRepository {
   def listFiltered(
-      name: Option[String], 
-      active: Option[Boolean], 
-      created: Option[java.time.Instant],
+      name: Option[String] = None, 
+      active: Option[Boolean] = None, 
+      created: Option[java.time.Instant] = None,
       offset: Option[Int] = None,
       limit: Option[Int] = None,
 ): Query0[UserListView]] = {
@@ -234,8 +259,8 @@ there.
 ### Entity versioning
 
 You can track entity versions by adding a `@Versioning` annotation on the column that will be used to
-keep the entity version. Supported column types are `int` and `timestamp(tz)`. You can se the values for these columns
-any way you like: the generated repository will always ignore the set values and use its own:
+keep the entity version. Supported column types are `int` and `timestamp(tz)`. You can set the values for these columns
+any way you like, the generated repository will always ignore the set values and use its own:
 
 - for `int` the `INSERT` will start at 1 and increment on every `UPDATE`
 - for `timestamp` `INSERT` and `UPDATE` will always use `now()`

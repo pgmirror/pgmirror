@@ -1,17 +1,15 @@
-lazy val scala212 = "2.12.8"
-lazy val scala213 = "2.13.0"
+lazy val scala212 = "2.12.10"
+lazy val scala213 = "2.13.1"
 lazy val supportedScalaVersions = List(scala213, scala212)
-lazy val doobieVersion = "0.7.0"
-lazy val circeVersion = "0.11.1"
 
 ThisBuild / organization := "com.github.irumiha"
 ThisBuild / version      := "0.1.0-SNAPSHOT"
-ThisBuild / scalaVersion := scala212
+ThisBuild / scalaVersion := scala213
 
 lazy val core = (project in file("core"))
   .settings(
-    crossScalaVersions := supportedScalaVersions,
-    name := "pgmirror-core",
+    crossScalaVersions  := supportedScalaVersions,
+    name                := "pgmirror-core",
     libraryDependencies ++= Seq(
       "com.github.pathikrit" %% "better-files" % "3.8.0",
       "org.postgresql" % "postgresql" % "42.2.6",
@@ -22,13 +20,13 @@ lazy val core = (project in file("core"))
 lazy val doobie = (project in file("doobie"))
   .settings(
     crossScalaVersions := supportedScalaVersions,
-    name := "pgmirror-doobie",
+    name               := "pgmirror-doobie",
   )
   .dependsOn(core)
 
 lazy val pgmirror = (project in file("."))
   .settings(
     crossScalaVersions := Nil,
-    publish / skip := true
+    publish / skip     := true
   )
   .aggregate(core, doobie)
