@@ -49,11 +49,11 @@ should define a column projection and necessary joins with a minimal set of `WHE
 
 For both tables and views we can add column descriptions that contain annotations:
 
-- `@FilterEq`
-- `@FilterGt`
-- `@FilterLt`
-- `@FilterGtEq`
-- `@FilterLtEq`
+- `@FilterEQ`
+- `@FilterGT`
+- `@FilterLT`
+- `@FilterGE`
+- `@FilterLE`
 - `@FilterBetween`
 
 The annotated columns are put in the argument list for the filter over the view.

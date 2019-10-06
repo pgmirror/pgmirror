@@ -4,12 +4,29 @@ import java.sql.{Connection, DriverManager, ResultSet}
 
 import com.github.irumiha.pgmirror.ResultSetIterator._
 import com.github.irumiha.pgmirror.model.gatherer._
-import com.github.irumiha.pgmirror.model.generator.{Column, Database, ForeignKey, Table, TableLike, Udt, View}
+import com.github.irumiha.pgmirror.model.generator.{Column, ColumnAnnotation, Database, ForeignKey, Table, TableAnnotation, TableLike, Udt, View}
 
 class DatabaseSchemaGatherer(settings: Settings) {
 
   private val driverCls: Class[_] = Class.forName("org.postgresql.Driver")
   protected lazy val database: Connection = DriverManager.getConnection(settings.url, settings.user, settings.password)
+
+  private def columnAnnotations(comment: Option[String]): Set[ColumnAnnotation] =
+    ColumnAnnotation.values.flatMap { a =>
+      val mi = a.regex.findAllIn(comment.getOrElse(""))
+      for (_ <- mi) yield {
+        a match {
+          case ColumnAnnotation.Command(_) => ColumnAnnotation.Command(mi.group("commandname"))
+          case _ => a
+        }
+      }
+    }.toSet
+
+  private def tableAnnotations(comment: Option[String]): Set[TableAnnotation] = {
+    TableAnnotation.values.flatMap { a =>
+      for (_ <- a.regex.findAllIn(comment.getOrElse(""))) yield a
+    }
+  }.toSet
 
   def gatherDatabase: Either[List[Throwable], Database] = {
     def runStatement[R](querySql: String, tr: ResultSet => R): List[R] = {
@@ -46,7 +63,8 @@ class DatabaseSchemaGatherer(settings: Settings) {
           isNullable = pgc.isNullable,
           isPrimaryKey = pgc.isPrimaryKey,
           ordinalPosition = pgc.ordinalPosition,
-          comment = pgc.description.filterNot(_.isEmpty)
+          comment = pgc.description.filterNot(_.isEmpty),
+          annotations = columnAnnotations(pgc.description).toList
         )
       )
     }
@@ -65,7 +83,8 @@ class DatabaseSchemaGatherer(settings: Settings) {
             tableClassName = pgt.tableName.split("_").filterNot(_.isEmpty).map(_.capitalize).mkString,
             columns = goodColumns.filter(c => c.tableSchema == tableSchema && c.tableName == pgt.tableName),
             comment = pgt.description.filterNot(_.isEmpty),
-            foreignKeys = List()
+            foreignKeys = List(),
+            annotations = tableAnnotations(pgt.description).toList
           )
         }
 

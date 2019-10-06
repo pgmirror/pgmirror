@@ -1,30 +1,47 @@
 package com.github.irumiha.pgmirror.model.generator
 
+import scala.util.matching.Regex
+
 sealed trait TableType
 case object Table extends TableType
 case object View extends TableType
 case object Udt extends TableType
 
-sealed trait ColumnAnnotation
-case object FilterEq                     extends ColumnAnnotation
-case object FilterGt                     extends ColumnAnnotation
-case object FilterLt                     extends ColumnAnnotation
-case object FilterGtEq                   extends ColumnAnnotation
-case object FilterLtEq                   extends ColumnAnnotation
-case object FilterBetween                extends ColumnAnnotation
-case object BelongsTo                    extends ColumnAnnotation
-case object Detail                       extends ColumnAnnotation
-case object Versioning                   extends ColumnAnnotation
-case class  Command(commandName: String) extends ColumnAnnotation
+sealed abstract class Annotation(val regex: Regex)
 
-sealed trait TableAnnotation
-case object Limit                        extends TableAnnotation
-case object Offset                       extends TableAnnotation
-case object Lookup                       extends TableAnnotation
-case object Event                        extends TableAnnotation
-case object VersionCheck                 extends TableAnnotation
-case object History                      extends TableAnnotation
+sealed abstract class ColumnAnnotation(override val regex: Regex) extends Annotation(regex)
 
+object ColumnAnnotation {
+  case object FilterEq                          extends ColumnAnnotation("@FilterEQ".r)
+  case object FilterGt                          extends ColumnAnnotation("@FilterGT".r)
+  case object FilterLt                          extends ColumnAnnotation("@FilterLT".r)
+  case object FilterGtEq                        extends ColumnAnnotation("@FilterGE".r)
+  case object FilterLtEq                        extends ColumnAnnotation("@FilterLE".r)
+  case object FilterBetween                     extends ColumnAnnotation("@FilterBetween".r)
+  case object BelongsTo                         extends ColumnAnnotation("@BelongsTo".r)
+  case object Detail                            extends ColumnAnnotation("@Detail".r)
+  case object Versioning                        extends ColumnAnnotation("@Versioning".r)
+  case class  Command(commandName: String = "") extends ColumnAnnotation("@Command\\((?<commandname>\\S+)\\)".r)
+
+  val values: List[ColumnAnnotation] = List[ColumnAnnotation](
+    FilterEq, FilterGt, FilterLt, FilterGtEq, FilterLtEq, FilterBetween, BelongsTo, Detail, Versioning, Command()
+  )
+}
+
+sealed abstract class TableAnnotation(override val regex: Regex) extends Annotation(regex)
+
+object TableAnnotation {
+  case object Limit        extends TableAnnotation("@Limit".r)
+  case object Offset       extends TableAnnotation("@Offset".r)
+  case object Lookup       extends TableAnnotation("@Lookup".r)
+  case object Event        extends TableAnnotation("@Event".r)
+  case object VersionCheck extends TableAnnotation("@VersionCheck".r)
+  case object History      extends TableAnnotation("@History".r)
+
+  val values: List[TableAnnotation] = List[TableAnnotation](
+    Limit, Offset, Lookup, Event, VersionCheck, History
+  )
+}
 case class TableLike(
   tableType: TableType,
   schemaName: String,

@@ -13,6 +13,7 @@ lazy val core = (project in file("core"))
     libraryDependencies ++= Seq(
       "com.github.pathikrit" %% "better-files" % "3.8.0",
       "org.postgresql" % "postgresql" % "42.2.6",
+      "com.beachape" %% "enumeratum" % "1.5.13",
       "org.scalatest" %% "scalatest" % "3.0.8" % Test,
     )
   )
