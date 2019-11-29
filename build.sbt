@@ -12,9 +12,9 @@ lazy val core = (project in file("core"))
     name                := "pgmirror-core",
     libraryDependencies ++= Seq(
       "com.github.pathikrit" %% "better-files" % "3.8.0",
-      "org.postgresql" % "postgresql" % "42.2.6",
+      "org.postgresql" % "postgresql" % "42.2.8",
       "com.beachape" %% "enumeratum" % "1.5.13",
-      "org.scalatest" %% "scalatest" % "3.0.8" % Test,
+      "org.scalatest" %% "scalatest" % "3.1.0" % Test,
     )
   )
 

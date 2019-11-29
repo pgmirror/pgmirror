@@ -12,20 +12,19 @@ sealed abstract class Annotation(val regex: Regex)
 sealed abstract class ColumnAnnotation(override val regex: Regex) extends Annotation(regex)
 
 object ColumnAnnotation {
-  case object FilterEq                          extends ColumnAnnotation("@FilterEQ".r)
-  case object FilterGt                          extends ColumnAnnotation("@FilterGT".r)
-  case object FilterLt                          extends ColumnAnnotation("@FilterLT".r)
-  case object FilterGtEq                        extends ColumnAnnotation("@FilterGE".r)
-  case object FilterLtEq                        extends ColumnAnnotation("@FilterLE".r)
-  case object FilterBetween                     extends ColumnAnnotation("@FilterBetween".r)
-  case object BelongsTo                         extends ColumnAnnotation("@BelongsTo".r)
-  case object Detail                            extends ColumnAnnotation("@Detail".r)
-  case object Versioning                        extends ColumnAnnotation("@Versioning".r)
-  case class  Command(commandName: String = "") extends ColumnAnnotation("@Command\\((?<commandname>\\S+)\\)".r)
+  case object FilterEq      extends ColumnAnnotation("@FilterEQ".r)
+  case object FilterGt      extends ColumnAnnotation("@FilterGT".r)
+  case object FilterLt      extends ColumnAnnotation("@FilterLT".r)
+  case object FilterGtEq    extends ColumnAnnotation("@FilterGE".r)
+  case object FilterLtEq    extends ColumnAnnotation("@FilterLE".r)
+  case object BelongsTo     extends ColumnAnnotation("@BelongsTo".r)
+  case object Detail        extends ColumnAnnotation("@Detail".r)
+  case object Versioning    extends ColumnAnnotation("@Versioning".r)
 
   val values: List[ColumnAnnotation] = List[ColumnAnnotation](
-    FilterEq, FilterGt, FilterLt, FilterGtEq, FilterLtEq, FilterBetween, BelongsTo, Detail, Versioning, Command()
+    FilterEq, FilterGt, FilterLt, FilterGtEq, FilterLtEq, BelongsTo, Detail, Versioning
   )
+
 }
 
 sealed abstract class TableAnnotation(override val regex: Regex) extends Annotation(regex)
@@ -54,7 +53,10 @@ case class TableLike(
   viewIsUpdatable: Boolean = false,
   isInsertable: Boolean = false,
   annotations: List[TableAnnotation] = Nil
-)
+) {
+  def tableWithSchema: String =
+    List(schemaName, s""""$tableName"""").filterNot(_.isEmpty).mkString(".")
+}
 
 case class Column(
   tableSchema: String,
@@ -68,7 +70,31 @@ case class Column(
   ordinalPosition: Int,
   comment: Option[String],
   annotations: List[ColumnAnnotation] = Nil
-)
+) {
+
+  def propType: String = {
+    if (isNullable) {
+      s"""Option[$modelType]"""
+    } else {
+      s"""$modelType"""
+    }
+  }
+
+  def propName: String = {
+    val nameParts: Array[String] = name.split("_")
+
+    nameParts.head + nameParts.tail.map(_.capitalize).mkString
+  }
+
+  def prop: String =
+    s"""${propName}: ${propType}"""
+
+  def propWithComment: String =
+    s"""${comment.map(co => s"// $co\n|  ").getOrElse("")}${propName}: ${propType}"""
+
+  def tableColumn: String = s""""${tableName}"."${name}""""
+
+}
 
 case class ForeignKey(
   table: TableLike,

@@ -12,15 +12,7 @@ class DatabaseSchemaGatherer(settings: Settings) {
   protected lazy val database: Connection = DriverManager.getConnection(settings.url, settings.user, settings.password)
 
   private def columnAnnotations(comment: Option[String]): Set[ColumnAnnotation] =
-    ColumnAnnotation.values.flatMap { a =>
-      val mi = a.regex.findAllIn(comment.getOrElse(""))
-      for (_ <- mi) yield {
-        a match {
-          case ColumnAnnotation.Command(_) => ColumnAnnotation.Command(mi.group("commandname"))
-          case _ => a
-        }
-      }
-    }.toSet
+    ColumnAnnotation.values.filter(_.regex.findAllIn(comment.getOrElse("")).nonEmpty).toSet
 
   private def tableAnnotations(comment: Option[String]): Set[TableAnnotation] = {
     TableAnnotation.values.flatMap { a =>
