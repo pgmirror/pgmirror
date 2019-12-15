@@ -47,7 +47,7 @@ CREATE TABLE auth.users (
 Any query with complex joins that is known in advance should be defined as a view in the database. The view definition 
 should define a column projection and necessary joins with a minimal set of `WHERE` clauses. 
 
-For both tables and views we can add column descriptions that contain annotations:
+For views we can add column descriptions that contain annotations:
 
 - `@FilterEQ`
 - `@FilterGT`
@@ -60,6 +60,16 @@ The annotated columns are put in the argument list for the filter over the view.
 View or table level annotations `@Limit` and `@Offset` will allow to specify the limit and offset to the query result. Be careful
 with using `@Limit` and `@Offset` for pagination. There are serious performance implications when your results have more
 than a couple of thousand records in total.
+
+View definitions create new model classes. This means that a view that returns columns identical to a table it selects
+from will yield a different class than the original table. 
+
+There are two additional annotations: `@Find` and `@FindOne`. You apply these annotations to table columns only. For every column with
+these annotations you will get a method `findByColumnName` in the table repository. This is purely a convenience feature,
+the same behaviour you get with `@FilterEQ` column annotation but this separates out a method for every column. `@Find` returns 
+a list and `@FindOne` returns an option of the model class and throws if there is more than one result.
+
+Make sure the columns you filter on are properly indexed!
 
 **Example:**
 
@@ -133,14 +143,6 @@ object UserListViewDoobieRepository {
   }
 }
 ```
-
-### Belongs-to relationships
-
-**Example:**
-
-A `Book` belongs to an `Author`. A foreign key on the `Book` that points to `Author` can be annotated with 
-`@BelongsTo`. CRUD code will be generated for both entities and a method will be added on `Book` repository
-named `forAuthor[K](id: K): Query0[Book]`. 
 
 ### Master-detail relationships
 

@@ -12,17 +12,18 @@ sealed abstract class Annotation(val regex: Regex)
 sealed abstract class ColumnAnnotation(override val regex: Regex) extends Annotation(regex)
 
 object ColumnAnnotation {
-  case object FilterEq      extends ColumnAnnotation("@FilterEQ".r)
-  case object FilterGt      extends ColumnAnnotation("@FilterGT".r)
-  case object FilterLt      extends ColumnAnnotation("@FilterLT".r)
-  case object FilterGtEq    extends ColumnAnnotation("@FilterGE".r)
-  case object FilterLtEq    extends ColumnAnnotation("@FilterLE".r)
-  case object BelongsTo     extends ColumnAnnotation("@BelongsTo".r)
-  case object Detail        extends ColumnAnnotation("@Detail".r)
-  case object Versioning    extends ColumnAnnotation("@Versioning".r)
+  case object FilterEq      extends ColumnAnnotation("@FilterEQ\\b".r)
+  case object FilterGt      extends ColumnAnnotation("@FilterGT\\b".r)
+  case object FilterLt      extends ColumnAnnotation("@FilterLT\\b".r)
+  case object FilterGtEq    extends ColumnAnnotation("@FilterGE\\b".r)
+  case object FilterLtEq    extends ColumnAnnotation("@FilterLE\\b".r)
+  case object Find          extends ColumnAnnotation("@Find\\b".r)
+  case object FindOne       extends ColumnAnnotation("@FindOne\\b".r)
+  case object Detail        extends ColumnAnnotation("@Detail\\b".r)
+  case object Versioning    extends ColumnAnnotation("@Versioning\\b".r)
 
   val values: List[ColumnAnnotation] = List[ColumnAnnotation](
-    FilterEq, FilterGt, FilterLt, FilterGtEq, FilterLtEq, BelongsTo, Detail, Versioning
+    FilterEq, FilterGt, FilterLt, FilterGtEq, FilterLtEq, Find, FindOne, Detail, Versioning
   )
 
 }
