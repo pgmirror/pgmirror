@@ -11,7 +11,7 @@ Pgmirror is a code generator that will take your database schema and generate so
  
 However, to be truly effective you also need to embrace certain patterns in system design. This project's aim is to be
 as simple as possible, both in the code and in the cognitive load on the programmer. We will pluck ideas from the DDD
-community, CQRS and what ever else when it will contribute to our goal of simple and maintainable project development.
+community, CQRS and what ever else when it will contribute to our goal of simple and maintainable project development. 
 
 ### Philosophy
 
@@ -57,16 +57,15 @@ For views we can add column descriptions that contain annotations:
 
 The annotated columns are put in the argument list for the filter over the view.
 
-View or table level annotations `@Limit` and `@Offset` will allow to specify the limit and offset to the query result. Be careful
+View level annotations `@Limit` and `@Offset` will allow to specify the limit and offset to the query result. Be careful
 with using `@Limit` and `@Offset` for pagination. There are serious performance implications when your results have more
 than a couple of thousand records in total.
 
 View definitions create new model classes. This means that a view that returns columns identical to a table it selects
 from will yield a different class than the original table. 
 
-There are two additional annotations: `@Find` and `@FindOne`. You apply these annotations to table columns only. For every column with
-these annotations you will get a method `findByColumnName` in the table repository. This is purely a convenience feature,
-the same behaviour you get with `@FilterEQ` column annotation but this separates out a method for every column. `@Find` returns 
+There are two additional annotations: `@Find` and `@FindOne`. You apply these annotations to table columns only. For 
+every column with these annotations you will get a method `findBy` + `ColumnName` in the table repository. `@Find` returns 
 a list and `@FindOne` returns an option of the model class and throws if there is more than one result.
 
 Make sure the columns you filter on are properly indexed!

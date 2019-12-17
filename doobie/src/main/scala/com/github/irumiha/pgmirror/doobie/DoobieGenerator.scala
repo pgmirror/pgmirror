@@ -2,6 +2,7 @@ package com.github.irumiha.pgmirror.doobie
 
 import com.github.irumiha.pgmirror.model.generator.{ForeignKey, TableLike}
 import com.github.irumiha.pgmirror.{GeneratedFile, Generator, Settings}
+import com.github.irumiha.pgmirror.model.generator.ColumnAnnotation._
 
 class DoobieGenerator extends Generator {
 
@@ -77,6 +78,34 @@ class DoobieGenerator extends Generator {
          |""".stripMargin
     }.getOrElse("")
 
+    val finds = table.columns.filter(c => c.annotations.contains(Find)).map { c =>
+      s"""
+         |  def findBy${c.propName.capitalize}(${c.prop}): ConnectionIO[List[${table.tableClassName}]] = {
+         |    sql$tq
+         |      select ${table.columns.map(_.tableColumn).mkString(",\n             ")}
+         |        from ${table.tableWithSchema}
+         |       where ${c.tableColumn} = $$${c.propName}
+         |    $tq
+         |    .query[${table.tableClassName}]
+         |    .to[List]
+         |  }
+         |""".stripMargin
+    }
+
+    val findOnes = table.columns.filter(c => c.annotations.contains(FindOne)).map { c =>
+      s"""
+         |  def findOneBy${c.propName.capitalize}(${c.prop}): ConnectionIO[Option[${table.tableClassName}]] = {
+         |    sql$tq
+         |      select ${table.columns.map(_.tableColumn).mkString(",\n             ")}
+         |        from ${table.tableWithSchema}
+         |       where ${c.tableColumn} = $$${c.propName}
+         |    $tq
+         |    .query[${table.tableClassName}]
+         |    .option
+         |  }
+         |""".stripMargin
+    }
+
     val deleteDef = pkColumn.map { p =>
       s"""
          |  def delete(${p.prop}): ConnectionIO[Option[${table.tableClassName}]] = {
@@ -113,6 +142,8 @@ class DoobieGenerator extends Generator {
          |$getDef
          |$deleteDef
          |$updateDef
+         |${finds.mkString("\n")}
+         |${findOnes.mkString("\n")}
          |""".stripMargin
 
     s"""
@@ -133,7 +164,6 @@ class DoobieGenerator extends Generator {
   }
 
   def generateViewRepository(settings: Settings, view: TableLike): String = {
-    import com.github.irumiha.pgmirror.model.generator.ColumnAnnotation._
 
     val filters: List[(String, String, String)] = for {
       col <- view.columns

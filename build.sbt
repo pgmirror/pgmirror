@@ -4,7 +4,7 @@ lazy val supportedScalaVersions = List(scala213, scala212)
 
 ThisBuild / organization := "com.github.irumiha"
 ThisBuild / version      := "0.1.0-SNAPSHOT"
-ThisBuild / scalaVersion := scala213
+ThisBuild / scalaVersion := scala212
 
 lazy val core = (project in file("core"))
   .settings(
