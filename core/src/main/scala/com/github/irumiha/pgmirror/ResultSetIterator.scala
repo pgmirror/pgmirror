@@ -15,8 +15,10 @@ class ResultSetIterator(val rs: ResultSet) extends Iterator[ResultSet] {
   override def hasNext: Boolean = synchronized {
     if (rs.isClosed) false
     else {
-      if (rowWasConsumed) _hasNext = rs.next()
-      rowWasConsumed = false
+      if (rowWasConsumed) {
+        _hasNext = rs.next()
+        rowWasConsumed = false
+      }
       _hasNext
     }
   }
@@ -32,7 +34,9 @@ class ResultSetIterator(val rs: ResultSet) extends Iterator[ResultSet] {
 }
 
 object ResultSetIterator {
+
   implicit class Rsi(val rs: ResultSet) extends AnyVal {
     def toIterator: ResultSetIterator = new ResultSetIterator(rs)
   }
+
 }

@@ -14,6 +14,7 @@ abstract class Generator {
       database <- new DatabaseSchemaGatherer(settings).gatherDatabase
     ) yield {
       generateForAllTables(settings, database.tables, database.foreignKeys)
+      generateForAllTables(settings, database.views, database.foreignKeys)
     }) match {
       case Left(errors) =>
         errors.foreach(println)
