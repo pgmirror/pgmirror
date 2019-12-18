@@ -14,7 +14,16 @@ case class PgForeignKeys(
 )
 object PgForeignKeys {
   def fromResultSet(rs: ResultSet): PgForeignKeys = {
-    PgForeignKeys(rs.getString(1), rs.getString(2), rs.getString(3),rs.getString(4), rs.getString(5), rs.getString(6), rs.getString(7),rs.getString(8))
+    PgForeignKeys(
+      tableSchema = rs.getString("table_schema"),
+      tableName = rs.getString("table_name"),
+      constraintSchema = rs.getString("constraint_schema"),
+      constraintName = rs.getString("constraint_name"),
+      columnName = rs.getString("column_name"),
+      foreignTableSchema = rs.getString("foreign_table_schema"),
+      foreignTableName = rs.getString("foreign_table_name"),
+      foreignColumnName = rs.getString("foreign_column_name"),
+    )
   }
 
   val sql: String =
@@ -45,7 +54,13 @@ object PgForeignKeys {
 case class PgTables(tableSchema: String, tableName: String, tableType: String, isInsertableInto: Boolean, description: Option[String])
 object PgTables {
   def fromResultSet(rs: ResultSet): PgTables =
-    PgTables(rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4) == "YES", Option(rs.getString(5)))
+    PgTables(
+      tableSchema = rs.getString("table_schema"),
+      tableName = rs.getString("table_name"),
+      tableType = rs.getString("table_type"),
+      isInsertableInto = rs.getString("is_insertable_into") == "YES",
+      description = Option(rs.getString("table_description")),
+    )
 
   val sql: String =
     """select table_schema, table_name, table_type, is_insertable_into, obj_description(pg_class.oid, 'pg_class') as table_description
@@ -68,17 +83,17 @@ case class PgColumns(
 object PgColumns {
   def fromResultSet(rs: ResultSet): PgColumns =
     PgColumns(
-      tableSchema = rs.getString(1),
-      tableName = rs.getString(2),
-      columnName = rs.getString(3),
-      ordinalPosition = rs.getInt(4),
-      columnDefault = rs.getString(5),
-      isNullable = rs.getString(6) == "YES",
-      isPrimaryKey = rs.getBoolean(10),
-      dataType = rs.getString(7),
-      udtSchema = rs.getString(8),
-      udtName = rs.getString(9),
-      description = Option(rs.getString(11))
+      tableSchema = rs.getString("table_schema"),
+      tableName = rs.getString("table_name"),
+      columnName = rs.getString("column_name"),
+      ordinalPosition = rs.getInt("ordinal_position"),
+      columnDefault = rs.getString("column_default"),
+      isNullable = rs.getString("is_nullable") == "YES",
+      dataType = rs.getString("data_type"),
+      udtSchema = rs.getString("udt_schema"),
+      udtName = rs.getString("udt_name"),
+      isPrimaryKey = rs.getBoolean("is_primary"),
+      description = Option(rs.getString("column_description"))
     )
 
   val sql: String =
@@ -101,7 +116,16 @@ object PgColumns {
 case class PgUdtAttributes(udtSchema: String, udtName: String, attributeName: String, ordinalPosition: Int, isNullable: Boolean, dataType: String, attributeUdtSchema: String, attributeUdtName: String)
 object PgUdtAttributes {
   def fromResultSet(rs: ResultSet): PgUdtAttributes =
-    PgUdtAttributes(rs.getString(1), rs.getString(2), rs.getString(3),rs.getInt(4),rs.getString(5) == "YES", rs.getString(6),rs.getString(7),rs.getString(8))
+    PgUdtAttributes(
+      udtSchema = rs.getString("udt_schema"),
+      udtName = rs.getString("udt_name"),
+      attributeName = rs.getString("attribute_name"),
+      ordinalPosition = rs.getInt("ordinal_position"),
+      isNullable = rs.getString("is_nullable") == "YES",
+      dataType = rs.getString("data_type"),
+      attributeUdtSchema = rs.getString("attribute_udt_schema"),
+      attributeUdtName = rs.getString("attribute_udt_name")
+    )
 
   val sql: String =
     """select udt_schema, udt_name, attribute_name, ordinal_position, is_nullable, data_type, attribute_udt_schema, attribute_udt_name
