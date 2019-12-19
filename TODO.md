@@ -89,17 +89,24 @@ COMMENT ON VIEW auth."users_list_view" IS $$
 @Offset
 $$;
 
+COMMENT ON COLUMN auth."users_list_view".id IS $$
+@NotNull
+$$;
+
 COMMENT ON COLUMN auth."users_list_view".name IS $$
 Users real name.
 
+@NotNull
 @FilterEQ
 $$;
 
 COMMENT ON COLUMN auth."users_list_view".active IS $$
+@NotNull
 @FilterEQ
 $$;
 
 COMMENT ON COLUMN auth."users_list_view".created IS $$
+@NotNull
 @FilterGE
 $$;
 ```
@@ -112,9 +119,9 @@ package your.custom_package.auth
 case class UserListView (
   id: java.util.UUID,
   name: String,
-  email: String,
+  email: Option[String],
   active: Boolean,
-  groups: String,
+  groups: Option[String],
   created: java.time.Instant
 )
 ```
@@ -127,9 +134,9 @@ import Fragments.{ in, whereAndOpt }
 
 object UserListViewDoobieRepository {
   def listFiltered(
-      name: Option[String] = None, 
-      active: Option[Boolean] = None, 
-      created: Option[java.time.Instant] = None,
+      name_=: Option[String] = None, 
+      active_=: Option[Boolean] = None, 
+      created_>=: Option[java.time.Instant] = None,
       offset: Option[Int] = None,
       limit: Option[Int] = None,
 ): Query0[UserListView]] = {

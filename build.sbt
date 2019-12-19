@@ -28,6 +28,12 @@ lazy val doobie = (project in file("doobie"))
 lazy val pgmirror = (project in file("."))
   .settings(
     crossScalaVersions := Nil,
-    publish / skip     := true
+    publish / skip     := true,
+    libraryDependencies ++= Seq(
+      "org.tpolecat"             %% "doobie-core" % "0.8.6",
+      "org.tpolecat"             %% "doobie-postgres" % "0.8.6",
+      "org.tpolecat"             %% "doobie-postgres-circe" % "0.8.6",
+      "io.circe"                 %% "circe-generic" % "0.12.3",
+    )
   )
   .aggregate(core, doobie)

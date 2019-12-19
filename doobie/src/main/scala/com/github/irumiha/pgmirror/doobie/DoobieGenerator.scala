@@ -3,6 +3,7 @@ package com.github.irumiha.pgmirror.doobie
 import com.github.irumiha.pgmirror.model.generator.{ForeignKey, TableLike}
 import com.github.irumiha.pgmirror.{GeneratedFile, Generator, Settings}
 import com.github.irumiha.pgmirror.model.generator.ColumnAnnotation._
+import com.github.irumiha.pgmirror.model.generator.TableAnnotation.{Limit, Offset}
 
 class DoobieGenerator extends Generator {
 
@@ -40,8 +41,13 @@ class DoobieGenerator extends Generator {
     List(rootPackage, schemaName).filterNot(_.isEmpty).mkString(".")
 
   def generateTableClass(settings: Settings, table: TableLike): String = {
+    val packageSuffix =
+      if (table.isView)
+        "views"
+      else
+        "models"
 
-    s"""package ${tablePackage(settings.rootPackage, table.schemaName)}
+    s"""package ${tablePackage(settings.rootPackage, table.schemaName)}.$packageSuffix
        |
        |import io.circe.Codec, io.circe.generic.semiauto.deriveCodec
        |
@@ -63,7 +69,7 @@ class DoobieGenerator extends Generator {
       s"""  def insert(item: ${table.className}): ConnectionIO[${table.className}] = {
          |    sql$tq
          |      insert into ${table.tableWithSchema}
-         |             (${table.columns.map(_.tableColumn).mkString(",\n              ")})
+         |             (${table.columns.map(_.columnNameQuoted).mkString(",\n              ")})
          |             values
          |             (${table.columns.map(tc => s"$${item.${tc.propName}}").mkString(",\n              ")})
          |      returning ${table.columns.map(_.tableColumn).mkString(",\n                ")}
@@ -76,7 +82,7 @@ class DoobieGenerator extends Generator {
     val getDef = pkColumn.map { p =>
       s"""  def get(${p.prop}): ConnectionIO[Option[${table.className}]] = {
          |    sql$tq
-         |      select ${table.columns.map(_.tableColumn).mkString(",\n             ")}
+         |      select ${table.columns.map(_.columnNameQuoted).mkString(",\n             ")}
          |        from ${table.tableWithSchema}
          |       where ${p.tableColumn} = $$${p.propName}
          |    $tq
@@ -89,7 +95,7 @@ class DoobieGenerator extends Generator {
     val finds = table.columns.filter(c => c.annotations.contains(Find)).map { c =>
       s"""  def findBy${c.propName.capitalize}(${c.prop}): ConnectionIO[List[${table.className}]] = {
          |    sql$tq
-         |      select ${table.columns.map(_.tableColumn).mkString(",\n             ")}
+         |      select ${table.columns.map(_.columnNameQuoted).mkString(",\n             ")}
          |        from ${table.tableWithSchema}
          |       where ${c.tableColumn} = $$${c.propName}
          |    $tq
@@ -102,7 +108,7 @@ class DoobieGenerator extends Generator {
     val findOnes = table.columns.filter(c => c.annotations.contains(FindOne)).map { c =>
       s"""  def findOneBy${c.propName.capitalize}(${c.prop}): ConnectionIO[Option[${table.className}]] = {
          |    sql$tq
-         |      select ${table.columns.map(_.tableColumn).mkString(",\n             ")}
+         |      select ${table.columns.map(_.columnNameQuoted).mkString(",\n             ")}
          |        from ${table.tableWithSchema}
          |       where ${c.tableColumn} = $$${c.propName}
          |    $tq
@@ -116,8 +122,8 @@ class DoobieGenerator extends Generator {
       s"""  def delete(${p.prop}): ConnectionIO[Option[${table.className}]] = {
          |    sql$tq
          |      delete from ${table.tableWithSchema}
-         |       where ${p.tableColumn} = $$${p.propName}
-         |      returning ${table.columns.map(_.tableColumn).mkString(",\n                ")}
+         |       where ${p.columnNameQuoted} = $$${p.propName}
+         |      returning ${table.columns.map(_.columnNameQuoted).mkString(",\n                ")}
          |    $tq
          |    .query[${table.className}]
          |    .option
@@ -130,9 +136,9 @@ class DoobieGenerator extends Generator {
       s"""  def update(item: ${table.className}): ConnectionIO[Option[${table.className}]] = {
          |    sql$tq
          |      update ${table.tableWithSchema}
-         |         set ${table.columns.filterNot(_.isPrimaryKey).map(tc => s"${tc.tableColumn} = $${item.${tc.propName}}").mkString(",\n             ")}
+         |         set ${table.columns.filterNot(_.isPrimaryKey).map(tc => s"${tc.columnNameQuoted} = $${item.${tc.propName}}").mkString(",\n             ")}
          |       where ${p.tableColumn} = $${item.${p.propName}}
-         |      returning ${table.columns.map(_.tableColumn).mkString(",\n                ")}
+         |      returning ${table.columns.map(_.columnNameQuoted).mkString(",\n                ")}
          |    $tq
          |    .query[${table.className}]
          |    .option
@@ -149,7 +155,7 @@ class DoobieGenerator extends Generator {
          |${findOnes.mkString("\n")}
          |""".stripMargin
 
-    s"""package ${tablePackage(settings.rootPackage, table.schemaName)}.doobie
+    s"""package ${tablePackage(settings.rootPackage, table.schemaName)}.repositories.doobie.models
        |
        |import doobie._
        |import doobie.implicits._
@@ -173,12 +179,12 @@ class DoobieGenerator extends Generator {
       col <- view.columns
       ann <- col.annotations.filterNot(_ == NotNull)
     } yield {
-      val paramName = ann match {
-        case FilterEq   => s"${col.propName}_="
-        case FilterLt   => s"${col.propName}_<"
-        case FilterGt   => s"${col.propName}_>"
-        case FilterGtEq => s"${col.propName}_>="
-        case FilterLtEq => s"${col.propName}_<="
+      val (paramName, paramNameVal) = ann match {
+        case FilterEq   => (s"${col.propName}_=", s"${col.propName}")
+        case FilterLt   => (s"${col.propName}_<", s"${col.propName}")
+        case FilterGt   => (s"${col.propName}_>", s"${col.propName}")
+        case FilterGtEq => (s"${col.propName}_>=", s"${col.propName}")
+        case FilterLtEq => (s"${col.propName}_<=", s"${col.propName}")
         case _ => throw new IllegalArgumentException("Only filter annotations allowed!")
       }
 
@@ -192,14 +198,42 @@ class DoobieGenerator extends Generator {
       }
 
       (
-        s"$paramName: Option[${col.propType}],",
-        s"""val ${paramName}Filter = $paramName.map(v => fr"${col.name} $filterOp $$v")""",
-        s"${paramName}Filter"
+        s"$paramName : Option[${col.propType}] = None,",
+        s"""val ${paramNameVal}Filter = $paramName.map(v => fr"${col.name} $filterOp $$v")""",
+        s"${paramNameVal}Filter"
       )
     }
+    val (limitParam, limitFr, rLimitFr) =
+      if (view.annotations.contains(Limit))
+        (
+          "      limit: Option[Int] = None,\n",
+          "    val limitFr: Fragment = if (limit.isDefined) Fragment.const(s\"LIMIT $${limit.get}\") else Fragment.empty\n",
+          " ++ limitFr"
+        )
+      else
+        ("", "", "")
+
+    val (offsetParam, offsetFr, rOffsetFr) =
+      if (view.annotations.contains(Offset))
+        (
+          "      offset: Option[Int] = None\n",
+          "    val offsetFr: Fragment = if (offset.isDefined) Fragment.const(s\"OFFSET $${offset.get}\") else Fragment.empty\n",
+          " ++ offsetFr"
+        )
+      else
+        ("", "", "")
+
+    val (whereFr, rWhereFr) =
+      if (filters.nonEmpty)
+        (
+          s"    val whereFr: Fragment = whereAndOpt(${filters.map(f => f._3).mkString(",")})\n",
+          " ++ whereFr"
+        )
+      else
+        ("", "")
 
     s"""
-       |package ${tablePackage(settings.rootPackage, view.schemaName)}.views
+       |package ${tablePackage(settings.rootPackage, view.schemaName)}.repositories.doobie.views
        |
        |import doobie._
        |import doobie.implicits._
@@ -212,20 +246,15 @@ class DoobieGenerator extends Generator {
        |import ${tablePackage(settings.rootPackage, view.schemaName)}.views.${view.className}
        |
        |class ${view.className}DoobieRepository {
-       |  def listFiltered(
-       |${filters.map(f => "      " + f._1).mkString("\n")}
-       |      offset: Option[Int] = None,
-       |      limit: Option[Int] = None,
-       |  ): Query0[${view.className}] = {
+       |  def listFiltered(${filters.map(f => "      " + f._1).mkString("\n","\n","\n")}$offsetParam$limitParam  ): Query0[${view.className}] = {
        |${filters.map(f => "    " + f._2).mkString("\n")}
-       |
-       |    val q: Fragment =
-       |      fr${tq}select ${view.columns.map(_.tableColumn).mkString(",")} from ${view.tableWithSchema}$tq ++
-       |      whereAndOpt(${filters.map(f => f._3).mkString(",")}) ++
-       |      if (offset.isDefined) Fragment.const(s"OFFSET $${offset.get}") else Fragment.empty ++
-       |      if (limit.isDefined) Fragment.const(s"LIMIT $${limit.get}") else Fragment.empty
+       |    val selectFr: Fragment =
+       |      fr${tq}select ${view.columns.map(_.tableColumn).mkString(",")} from ${view.tableWithSchema}$tq
+       |$whereFr$offsetFr$limitFr
+       |    val q: Fragment = selectFr${rWhereFr}${rLimitFr}${rOffsetFr}
        |
        |    q.query[${view.className}]
+       |  }
        |}
        |
        |""".stripMargin

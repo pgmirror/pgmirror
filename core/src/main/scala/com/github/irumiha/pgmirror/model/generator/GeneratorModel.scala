@@ -89,7 +89,12 @@ case class Column(
   def propName: String = {
     val nameParts: Array[String] = name.split("_")
 
-    nameParts.head + nameParts.tail.map(_.capitalize).mkString
+    val rawPropName = nameParts.head + nameParts.tail.map(_.capitalize).mkString
+
+    if (rawPropName.matches("""^\d.*""") || rawPropName == "type")
+      "`"+rawPropName+"`"
+    else
+      rawPropName
   }
 
   def prop: String =
@@ -100,6 +105,7 @@ case class Column(
 
   def tableColumn: String = s""""${tableName}"."${name}""""
 
+  def columnNameQuoted: String = s""""$name""""
 }
 
 case class ForeignKey(
