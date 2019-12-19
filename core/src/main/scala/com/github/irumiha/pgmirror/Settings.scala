@@ -10,10 +10,12 @@ case class Settings(
   password: String,
   rootPath: String,
   rootPackage: String,
+  // If you set schemas list then the schemaNameInclude will be ignored
+  schemas: List[String] = List(),
   schemaNameInclude: Regex = "^public$".r,
-  schemaNameExclude: Regex = "^public$".r,
   tableNameInclude: Regex = ".*".r,
   udtNameInclude: Regex = ".*".r,
+  // A schema with this name will not generate a package
   defaultSchema: String = "public"
 ) {
   lazy val schemaFilter: Pattern = schemaNameInclude.pattern

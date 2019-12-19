@@ -65,6 +65,14 @@ object PgTables {
   val sql: String =
     """select table_schema, table_name, table_type, is_insertable_into, obj_description(pg_class.oid, 'pg_class') as table_description
       |from information_schema.tables JOIN pg_catalog.pg_class ON relnamespace=table_schema::regnamespace::oid AND relname=table_name
+      |order by table_schema,table_name
+      |""".stripMargin
+
+  def sqlSchemaInList(schemas: List[String]): String =
+    s"""select table_schema, table_name, table_type, is_insertable_into, obj_description(pg_class.oid, 'pg_class') as table_description
+      |from information_schema.tables JOIN pg_catalog.pg_class ON relnamespace=table_schema::regnamespace::oid AND relname=table_name
+      |where table_schema in (${schemas.map(_ => "?").mkString(",")})
+      |order by table_schema,table_name
       |""".stripMargin
 }
 case class PgColumns(

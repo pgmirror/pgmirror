@@ -1,6 +1,6 @@
 package com.github.irumiha.pgmirror
 
-import java.sql.{Connection, DriverManager, ResultSet}
+import java.sql.{Connection, DriverManager, PreparedStatement, ResultSet}
 
 import com.github.irumiha.pgmirror.ResultSetIterator._
 import com.github.irumiha.pgmirror.model.gatherer._
@@ -21,19 +21,30 @@ class DatabaseSchemaGatherer(settings: Settings) {
   }.toSet
 
   def gatherDatabase: Either[List[Throwable], Database] = {
-    def runStatement[R](querySql: String, tr: ResultSet => R): List[R] = {
-      val ps = database.prepareStatement(querySql)
+    def runStatement[R](ps: PreparedStatement, tr: ResultSet => R): List[R] = {
       val list = ps.executeQuery().toIterator.map(tr).toList
       ps.close()
       list
     }
 
-    val pgForeignKeys = runStatement(PgForeignKeys.sql, PgForeignKeys.fromResultSet)
+    val pgForeignKeys =
+      runStatement(database.prepareStatement(PgForeignKeys.sql), PgForeignKeys.fromResultSet)
       .filter(f => settings.schemaFilter.matcher(f.tableSchema).matches())
-    val pgTables = runStatement(PgTables.sql, PgTables.fromResultSet)
-      .filter(t => settings.schemaFilter.matcher(t.tableSchema).matches() &&
-                   settings.tableFilter.matcher(t.tableName).matches())
-    val pgColumns = runStatement(PgColumns.sql, PgColumns.fromResultSet)
+
+    val rawTables =
+      if (settings.schemas.nonEmpty) {
+        val ps = database.prepareStatement(PgTables.sqlSchemaInList(settings.schemas))
+        settings.schemas.zipWithIndex.foreach { case (schema, i) => ps.setString(i+1, schema)}
+        runStatement(ps, PgTables.fromResultSet)
+      } else {
+        runStatement(database.prepareStatement(PgTables.sql), PgTables.fromResultSet)
+      }
+
+    val pgTables =
+      rawTables.filter(t => settings.schemaFilter.matcher(t.tableSchema).matches() &&
+                            settings.tableFilter.matcher(t.tableName).matches())
+
+    val pgColumns = runStatement(database.prepareStatement(PgColumns.sql), PgColumns.fromResultSet)
       .filter(t => settings.schemaFilter.matcher(t.tableSchema).matches() &&
                    settings.tableFilter.matcher(t.tableName).matches())
 
