@@ -1,6 +1,7 @@
 ## About
 
-Pgmirror is a code generator that will take your database schema and generate some code for you:
+Pgmirror is a code generator written in Scala that will take your Postgresql database schema and generate 
+some code for you:
 
 - Generate model classes for your domain models.
 - Generate the repositories using the Doobie library.
