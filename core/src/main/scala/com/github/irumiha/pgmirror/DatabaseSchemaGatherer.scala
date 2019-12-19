@@ -44,7 +44,9 @@ class DatabaseSchemaGatherer(settings: Settings) {
       val schema = if (pgc.udtSchema == settings.defaultSchema) "" else pgc.udtSchema
       val tableSchema = if (pgc.tableSchema == settings.defaultSchema) "" else pgc.tableSchema
 
-      SqlTypes.typeMapping(schema, pgc.udtName, pgc.dataType).map(dt =>
+      SqlTypes.typeMapping(schema, pgc.udtName, pgc.dataType).map { dt =>
+        val annotations = columnAnnotations(pgc.description)
+
         Column(
           tableSchema = tableSchema,
           tableName = pgc.tableName,
@@ -52,13 +54,13 @@ class DatabaseSchemaGatherer(settings: Settings) {
           columnType = pgc.dataType,
           typeName = s"${pgc.udtSchema}.${pgc.udtName}",
           modelType = dt,
-          isNullable = pgc.isNullable,
+          isNullable = pgc.isNullable && !annotations.contains(ColumnAnnotation.NotNull),
           isPrimaryKey = pgc.isPrimaryKey,
           ordinalPosition = pgc.ordinalPosition,
           comment = pgc.description.filterNot(_.isEmpty),
-          annotations = columnAnnotations(pgc.description).toList
+          annotations = annotations.toList
         )
-      )
+      }
     }
     val allErrors = columns.collect { case Left(err) => err }
     if (allErrors.nonEmpty) {
@@ -71,12 +73,14 @@ class DatabaseSchemaGatherer(settings: Settings) {
           TableLike(
             tableType = if (pgt.tableType == "BASE TABLE") Table else if (pgt.tableType == "VIEW") View else Udt,
             schemaName = tableSchema,
-            tableName = pgt.tableName,
-            tableClassName = pgt.tableName.split("_").filterNot(_.isEmpty).map(_.capitalize).mkString,
+            name = pgt.tableName,
+            className = pgt.tableName.split("_").filterNot(_.isEmpty).map(_.capitalize).mkString,
             columns = goodColumns.filter(c => c.tableSchema == tableSchema && c.tableName == pgt.tableName),
             comment = pgt.description.filterNot(_.isEmpty),
             foreignKeys = List(),
-            annotations = tableAnnotations(pgt.description).toList
+            annotations = tableAnnotations(pgt.description).toList,
+            isView = pgt.tableType == "VIEW",
+            isInsertable = pgt.tableType == "BASE TABLE"
           )
         }
 
@@ -89,9 +93,9 @@ class DatabaseSchemaGatherer(settings: Settings) {
           fgk          <- pgForeignKeys
           fkTableSchema = if (fgk.tableSchema == settings.defaultSchema) "" else fgk.tableSchema
           fkForeignTableSchema = if (fgk.foreignTableSchema == settings.defaultSchema) "" else fgk.foreignTableSchema
-          table        <- tables.find(t => t.schemaName == fkTableSchema && t.tableName == fgk.tableName).toList
+          table        <- tables.find(t => t.schemaName == fkTableSchema && t.name == fgk.tableName).toList
           col          <- table.columns.find(_.name == fgk.columnName).toList
-          foreignTable <- tables.find(t => t.schemaName == fkForeignTableSchema && t.tableName == fgk.foreignTableName).toList
+          foreignTable <- tables.find(t => t.schemaName == fkForeignTableSchema && t.name == fgk.foreignTableName).toList
           foreignCol   <- foreignTable.columns.find(_.name == fgk.foreignColumnName).toList
         } yield
           ForeignKey(

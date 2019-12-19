@@ -3,8 +3,11 @@ package com.github.irumiha.pgmirror.model.generator
 import scala.util.matching.Regex
 
 sealed trait TableType
+
 case object Table extends TableType
+
 case object View extends TableType
+
 case object Udt extends TableType
 
 sealed abstract class Annotation(val regex: Regex)
@@ -21,9 +24,10 @@ object ColumnAnnotation {
   case object FindOne       extends ColumnAnnotation("""@FindOne\b""".r)
   case object Detail        extends ColumnAnnotation("""@Detail\b""".r)
   case object Versioning    extends ColumnAnnotation("""@Versioning\b""".r)
+  case object NotNull       extends ColumnAnnotation("""@NotNull\b""".r)
 
   val values: List[ColumnAnnotation] = List[ColumnAnnotation](
-    FilterEq, FilterGt, FilterLt, FilterGtEq, FilterLtEq, Find, FindOne, Detail, Versioning
+    FilterEq, FilterGt, FilterLt, FilterGtEq, FilterLtEq, Find, FindOne, Detail, Versioning, NotNull
   )
 
 }
@@ -42,11 +46,12 @@ object TableAnnotation {
     Limit, Offset, Lookup, Event, VersionCheck, History
   )
 }
+
 case class TableLike(
   tableType: TableType,
   schemaName: String,
-  tableName: String,
-  tableClassName: String,
+  name: String,
+  className: String,
   columns: List[Column],
   comment: Option[String],
   foreignKeys: List[ForeignKey] = List(),
@@ -56,7 +61,7 @@ case class TableLike(
   annotations: List[TableAnnotation] = Nil
 ) {
   def tableWithSchema: String =
-    List(schemaName, s""""$tableName"""").filterNot(_.isEmpty).mkString(".")
+    List(schemaName, s""""$name"""").filterNot(_.isEmpty).mkString(".")
 }
 
 case class Column(

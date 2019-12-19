@@ -70,6 +70,10 @@ a list and `@FindOne` returns an option of the model class and throws if there i
 
 Make sure the columns you filter on are properly indexed!
 
+Postgresql reports all view columns as nullable which is inconvenient because generated model class will have all column
+types set to `Option[Whatever]`. If you wish to override nullability of a certain column use the `@NotNull` annotation
+on that column. This annotation is also available on table columns. Be careful when you use it.
+
 **Example:**
 
 We have a table `auth.users` with a complex user definition and we want a simpler view for 
