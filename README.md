@@ -8,11 +8,57 @@ some code for you:
 - Generate the Http4s endpoints for CRUD operations.
 - What ever else you decide to add yourself. It is easy to extend.
  
-However, to be truly effective you also need to embrace certain patterns in system design. This project's aim is to be
-as simple as possible, both in the code and in the cognitive load on the programmer. We will pluck ideas from the DDD
-community, CQRS and what ever else when it will contribute to our goal of simple and maintainable project development. 
+# Usage
+
+Until we make an sbt plugin you can add this task directly in your `build.sbt`. The generated code depends on
+`doobie-core`, `doobie-postgres`, `circe-core`, `circe-generic` and `circe-parser`.
+
+* `project/build.sbt`
+```scala
+libraryDependencies += "com.github.pgmirror" %% "pgmirror" % "0.0.1"
+```
+
+* `build.sbt`
+```scala
+val pgMirror = taskKey[Unit]("Mirrors the Postgres database into code")
+
+lazy val root = (project in file("."))
+  .settings(
+    name := "Pgmirror test",
+    libraryDependencies ++= Seq(
+      doobieCore,
+      doobiePostgres,
+      circeCore,
+      circeGeneric,
+      circeParser,
+      doobieSpecs2 % Test,
+      scalaTest % Test
+    ),
+    pgMirror := {
+      import com.github.irumiha.pgmirror.doobie.DoobieGenerator
+      import com.github.irumiha.pgmirror.Settings
+
+      val settings = Settings(
+        url = "jdbc:postgresql://localhost:5432/your_db",
+        user = "your_db_username",
+        password = "your_db_password",
+        rootPackage = "com.project.fabulous.your.data",
+        rootPath = ((Compile / unmanagedSourceDirectories).value).head.getAbsolutePath
+      )
+
+      val gen = new DoobieGenerator
+      gen.generate(settings)
+    }
+  )
+```
+
+then start `sbt` shell and run `pgMirror`. 
 
 ### Philosophy
+
+To be truly effective you also need to embrace certain patterns in system design. This project's aim is to be
+as simple as possible, both in the code and in the cognitive load on the programmer. We will pluck ideas from the DDD
+community, CQRS and what ever else when it will contribute to our goal of simple and maintainable project development. 
 
 The generated code should account for majority if not all uses of your presistence layer. There should be no custom SQL
 code in your main source. This is not 100% possible but if you organize your code carefully then using the repository 
