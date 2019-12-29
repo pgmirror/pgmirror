@@ -2,9 +2,13 @@ lazy val scala212 = "2.12.10"
 lazy val scala213 = "2.13.1"
 lazy val supportedScalaVersions = List(scala213, scala212)
 
-ThisBuild / organization := "com.github.irumiha"
-ThisBuild / version      := "0.1.0-SNAPSHOT"
+ThisBuild / organization := "com.github.pgmirror"
+ThisBuild / version      := "0.1.0"
 ThisBuild / scalaVersion := scala212
+
+ThisBuild / githubTokenSource := Some(TokenSource.Environment("PGMIRROR_GITHUB_TOKEN"))
+ThisBuild / githubOwner := "pgmirror"
+ThisBuild / githubRepository := "pgmirror"
 
 lazy val core = (project in file("core"))
   .settings(
