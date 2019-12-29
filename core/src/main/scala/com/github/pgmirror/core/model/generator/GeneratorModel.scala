@@ -1,4 +1,4 @@
-package com.github.irumiha.pgmirror.model.generator
+package com.github.pgmirror.core.model.generator
 
 import scala.util.matching.Regex
 
@@ -15,6 +15,7 @@ sealed abstract class Annotation(val regex: Regex)
 sealed abstract class ColumnAnnotation(override val regex: Regex) extends Annotation(regex)
 
 object ColumnAnnotation {
+  case object AppPk         extends ColumnAnnotation("""@AppPk\b""".r)
   case object FilterEq      extends ColumnAnnotation("""@FilterEQ\b""".r)
   case object FilterGt      extends ColumnAnnotation("""@FilterGT\b""".r)
   case object FilterLt      extends ColumnAnnotation("""@FilterLT\b""".r)
@@ -27,7 +28,11 @@ object ColumnAnnotation {
   case object NotNull       extends ColumnAnnotation("""@NotNull\b""".r)
 
   val values: List[ColumnAnnotation] = List[ColumnAnnotation](
-    FilterEq, FilterGt, FilterLt, FilterGtEq, FilterLtEq, Find, FindOne, Detail, Versioning, NotNull
+    AppPk, FilterEq, FilterGt, FilterLt, FilterGtEq, FilterLtEq, Find, FindOne, Detail, Versioning, NotNull
+  )
+
+  val filterValues: Set[ColumnAnnotation] = Set(
+    FilterEq, FilterGt, FilterLt, FilterGtEq, FilterLtEq
   )
 
 }

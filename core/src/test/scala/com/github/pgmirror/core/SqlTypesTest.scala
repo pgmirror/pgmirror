@@ -1,8 +1,9 @@
-package com.github.irumiha.pgmirror
+package com.github.pgmirror.core
 
-import org.scalatest.{FunSuite, MustMatchers}
+import org.scalatest.matchers.must.Matchers
+import org.scalatest.funsuite.AnyFunSuite
 
-class SqlTypesTest extends FunSuite with MustMatchers {
+class SqlTypesTest extends AnyFunSuite with Matchers {
 
   test("testTypeMapping") {
     val cases = Seq(

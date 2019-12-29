@@ -1,4 +1,4 @@
-package com.github.irumiha.pgmirror
+package com.github.pgmirror.core
 
 import java.sql.ResultSet
 

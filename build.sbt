@@ -33,7 +33,9 @@ lazy val pgmirror = (project in file("."))
       "org.tpolecat"             %% "doobie-core" % "0.8.6",
       "org.tpolecat"             %% "doobie-postgres" % "0.8.6",
       "org.tpolecat"             %% "doobie-postgres-circe" % "0.8.6",
+      "io.circe"                 %% "circe-core" % "0.12.3",
       "io.circe"                 %% "circe-generic" % "0.12.3",
+      "io.circe"                 %% "circe-generic-extras" % "0.12.2",
     )
   )
   .aggregate(core, doobie)

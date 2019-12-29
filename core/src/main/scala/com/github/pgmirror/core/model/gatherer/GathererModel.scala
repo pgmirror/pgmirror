@@ -1,4 +1,4 @@
-package com.github.irumiha.pgmirror.model.gatherer
+package com.github.pgmirror.core.model.gatherer
 
 import java.sql.ResultSet
 
@@ -139,5 +139,30 @@ object PgUdtAttributes {
     """select udt_schema, udt_name, attribute_name, ordinal_position, is_nullable, data_type, attribute_udt_schema, attribute_udt_name
       |from information_schema.attributes
       |""".stripMargin
+
+}
+
+case class PgEnums(enumSchema: String, enumName: String, enumValues: List[String])
+object PgEnums {
+  val sql: String =
+    """select n.nspname as enum_schema,
+      |       t.typname as enum_name,
+      |       array_agg(e.enumlabel) as enum_values
+      |from pg_type t
+      |   join pg_enum e on t.oid = e.enumtypid
+      |   join pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+      |group by n.nspname, t.typname""".stripMargin
+
+  def fromResultSet(rs: ResultSet): PgEnums = {
+    val enumValues =
+      rs.getArray("enum_values")
+        .getArray.asInstanceOf[Array[String]]
+
+    PgEnums(
+      rs.getString("enum_schema"),
+      rs.getString("enum_name"),
+      enumValues.toList
+    )
+  }
 
 }

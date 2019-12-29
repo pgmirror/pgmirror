@@ -1,20 +1,20 @@
-package com.github.irumiha.pgmirror
+package com.github.pgmirror.core
 
 import java.nio.charset.StandardCharsets
 
 import better.files.File
-import com.github.irumiha.pgmirror.model.generator.{ForeignKey, TableLike}
+import com.github.pgmirror.core.model.generator.{ForeignKey, TableLike}
 
 case class GeneratedFile(relativePath: String, filename: String, content: String)
 
-abstract class Generator {
+abstract class Generator(settings: Settings) {
 
-  def generate(settings: Settings): Unit = {
+  def generate(): Unit = {
     (for (
       database <- new DatabaseSchemaGatherer(settings).gatherDatabase
     ) yield {
-      generateForAllTables(settings, database.tables, database.foreignKeys)
-      generateForAllTables(settings, database.views, database.foreignKeys)
+      generateForAllTables(database.tables, database.foreignKeys)
+      generateForAllTables(database.views, database.foreignKeys)
     }) match {
       case Left(errors) =>
         errors.foreach(println)
@@ -24,7 +24,7 @@ abstract class Generator {
 
   }
 
-  def generateForAllTables(settings: Settings, tables: List[TableLike], foreignKeys: List[ForeignKey]): Unit = {
+  def generateForAllTables(tables: List[TableLike], foreignKeys: List[ForeignKey]): Unit = {
     import settings._
 
     val rootOutputDir = rootPackage match {
@@ -34,8 +34,8 @@ abstract class Generator {
 
     rootOutputDir.createDirectories()
 
-    val allTableFiles = tables.flatMap(generateForTable(settings, _, foreignKeys))
-    val utilFile = generateUtil(settings).toList
+    val allTableFiles = tables.flatMap(generateForTable(_, foreignKeys))
+    val utilFile = generateUtil.toList
 
     (allTableFiles ++ utilFile).foreach { ts =>
       val fileOutputDir = rootOutputDir / ts.relativePath
@@ -45,8 +45,8 @@ abstract class Generator {
     }
   }
 
-  def generateForTable(settings: Settings, table: TableLike, foreignKeys: List[ForeignKey]): List[GeneratedFile]
+  def generateForTable(table: TableLike, foreignKeys: List[ForeignKey]): List[GeneratedFile]
 
-  def generateUtil(settings: Settings): Option[GeneratedFile]
+  def generateUtil: Option[GeneratedFile]
 
 }

@@ -1,10 +1,9 @@
-package com.github.irumiha.pgmirror
+package com.github.pgmirror.core
 
 import java.sql.{Connection, DriverManager, PreparedStatement, ResultSet}
 
-import com.github.irumiha.pgmirror.ResultSetIterator._
-import com.github.irumiha.pgmirror.model.gatherer._
-import com.github.irumiha.pgmirror.model.generator.{Column, ColumnAnnotation, Database, ForeignKey, Table, TableAnnotation, TableLike, Udt, View}
+import com.github.pgmirror.core.model.gatherer.{PgColumns, PgForeignKeys, PgTables}
+import com.github.pgmirror.core.model.generator.{Column, ColumnAnnotation, Database, ForeignKey, Table, TableAnnotation, TableLike, Udt, View}
 
 class DatabaseSchemaGatherer(settings: Settings) {
 
@@ -21,6 +20,8 @@ class DatabaseSchemaGatherer(settings: Settings) {
   }.toSet
 
   def gatherDatabase: Either[List[Throwable], Database] = {
+    import com.github.pgmirror.core.ResultSetIterator._
+
     def runStatement[R](ps: PreparedStatement, tr: ResultSet => R): List[R] = {
       val list = ps.executeQuery().toIterator.map(tr).toList
       ps.close()
@@ -47,6 +48,11 @@ class DatabaseSchemaGatherer(settings: Settings) {
     val pgColumns = runStatement(database.prepareStatement(PgColumns.sql), PgColumns.fromResultSet)
       .filter(t => settings.schemaFilter.matcher(t.tableSchema).matches() &&
                    settings.tableFilter.matcher(t.tableName).matches())
+
+
+    // TODO implement Enums (maybe)
+    // val pgEnums = runStatement(database.prepareStatement(PgEnums.sql), PgEnums.fromResultSet)
+    //   .filter(t => settings.schemaFilter.matcher(t.enumSchema).matches())
 
     // TODO implement UDTs
     // val pgUdtAttributes = runStatement(PgUdtAttributes.sql, PgUdtAttributes.fromResultSet)

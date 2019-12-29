@@ -5,20 +5,20 @@ some code for you:
 
 - Generate model classes for your domain models.
 - Generate the repositories using the Doobie library.
-- Generate the Http4s endpoints for CRUD operations.
 - What ever else you decide to add yourself. It is easy to extend.
  
 # Usage
 
 Until we make an sbt plugin you can add this task directly in your `build.sbt`. The generated code depends on
-`doobie-core`, `doobie-postgres`, `circe-core`, `circe-generic` and `circe-parser`.
+`doobie-core`, `doobie-postgres`, `doobie-postgres-circe`, `circe-core`, `circe-generic` and `circe-generic-extras`. 
+There are no hard requirements on Doobie or Circe versions but do use the latest you can afford.
 
-* `project/build.sbt`
+* Sample `project/build.sbt`
 ```scala
-libraryDependencies += "com.github.pgmirror" %% "pgmirror" % "0.0.1"
+libraryDependencies += "com.github.pgmirror" %% "pgmirror-doobie" % "0.0.1"
 ```
 
-* `build.sbt`
+* Sample `build.sbt`
 ```scala
 val pgMirror = taskKey[Unit]("Mirrors the Postgres database into code")
 
@@ -26,13 +26,12 @@ lazy val root = (project in file("."))
   .settings(
     name := "Pgmirror test",
     libraryDependencies ++= Seq(
-      doobieCore,
-      doobiePostgres,
-      circeCore,
-      circeGeneric,
-      circeParser,
-      doobieSpecs2 % Test,
-      scalaTest % Test
+      "org.tpolecat"             %% "doobie-core" % "0.8.6",
+      "org.tpolecat"             %% "doobie-postgres" % "0.8.6",
+      "org.tpolecat"             %% "doobie-postgres-circe" % "0.8.6",
+      "io.circe"                 %% "circe-core" % "0.12.3",
+      "io.circe"                 %% "circe-generic" % "0.12.3",
+      "io.circe"                 %% "circe-generic-extras" % "0.12.2",
     ),
     pgMirror := {
       import com.github.irumiha.pgmirror.doobie.DoobieGenerator
