@@ -9,12 +9,15 @@ case class GeneratedFile(relativePath: String, filename: String, content: String
 
 abstract class Generator(settings: Settings) {
 
-  def generate(): Unit = {
+  /**
+   * The base method that runs the whole process of gathering database schema
+   * and running the generators.
+   */
+  final def generate(): Unit = {
     (for (
       database <- new DatabaseSchemaGatherer(settings).gatherDatabase
     ) yield {
-      generateForAllTables(database.tables, database.foreignKeys)
-      generateForAllTables(database.views, database.foreignKeys)
+      generateForAllTables(database.tables ++ database.views, database.foreignKeys)
     }) match {
       case Left(errors) =>
         errors.foreach(println)
@@ -24,7 +27,13 @@ abstract class Generator(settings: Settings) {
 
   }
 
-  def generateForAllTables(tables: List[TableLike], foreignKeys: List[ForeignKey]): Unit = {
+  /**
+   * For all tables call the generators and output the returned contents into spedified file paths.
+   *
+   * @param tables List of all table-like objects (tables and views).
+   * @param foreignKeys List of all foreign keys in the schema.
+   */
+  private final def generateForAllTables(tables: List[TableLike], foreignKeys: List[ForeignKey]): Unit = {
     import settings._
 
     val rootOutputDir = rootPackage match {
@@ -45,8 +54,20 @@ abstract class Generator(settings: Settings) {
     }
   }
 
+  /**
+   * Generates zero or more files for a given table.
+   *
+   * @param table The table the code is generated for.
+   * @param foreignKeys List of ALL foreign keys in the schema.
+   * @return List of GeneratedFile containing the path and contents for each file.
+   */
   def generateForTable(table: TableLike, foreignKeys: List[ForeignKey]): List[GeneratedFile]
 
+  /**
+   * Generates a single utility file that is not dependent on actual database schema.
+   * Use it to generate model or repository superclasses, etc.
+   * @return
+   */
   def generateUtil: Option[GeneratedFile]
 
 }

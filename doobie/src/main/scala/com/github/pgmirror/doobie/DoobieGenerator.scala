@@ -11,7 +11,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
     GeneratedFile(
       "repositories/doobie",
       "DoobieRepository.scala",
-      generateRepository()
+      generateBaseRepository()
     )
   }
 
@@ -41,12 +41,12 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
     )
   }
 
-  val tq = "\"\"\""
+  private val tq = "\"\"\""
 
-  def tablePackage(rootPackage: String, schemaName: String): String =
+  private def tablePackage(rootPackage: String, schemaName: String): String =
     List(rootPackage, schemaName).filterNot(_.isEmpty).mkString(".")
 
-  def generateTableClass(settings: Settings, table: TableLike): String = {
+  private def generateTableClass(settings: Settings, table: TableLike): String = {
     val pkColumn = table.columns.find(_.isPrimaryKey)
     val packageSuffix =
       if (table.isView)
@@ -97,7 +97,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |""".stripMargin
   }
 
-  def generateTableRepository(settings: Settings, table: TableLike): String = {
+  private def generateTableRepository(settings: Settings, table: TableLike): String = {
     val pkColumn = table.columns.find(_.isPrimaryKey)
     def appPk = pkColumn.exists(_.annotations.contains(AppPk))
 
@@ -214,7 +214,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        """.stripMargin
   }
 
-  def generateViewRepository(settings: Settings, view: TableLike): String = {
+  private def generateViewRepository(settings: Settings, view: TableLike): String = {
 
     val filters: List[(String, String, String)] = for {
       col <- view.columns
@@ -301,7 +301,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |""".stripMargin
   }
 
-  def generateRepository(): String =
+  private def generateBaseRepository(): String =
     s"""package ${settings.rootPackage}.repositories.doobie
       |
       |import doobie._
