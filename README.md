@@ -21,7 +21,9 @@ afford.
 
 * Sample `project/build.sbt`
 ```scala
-libraryDependencies += "com.github.pgmirror" %% "pgmirror-doobie" % "0.0.1"
+resolvers in ThisBuild += "pgmirror" at "https://maven.pkg.github.com/pgmirror/pgmirror"
+
+libraryDependencies += "com.github.pgmirror" %% "pgmirror-doobie" % "0.1.0"
 ```
 
 * Sample `build.sbt`
