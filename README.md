@@ -63,12 +63,17 @@ then start `sbt` shell and run `pgMirror`.
 
 # Why? How? What?
 
-This is an exploration in creating a tool with maximum impact that is as simple as possible. The whole codebase 
-currently sits at 850 lines. It should be understandable to anyone who invests an hour of their time.
+Pgmirror is an exploration in creating a tool with maximum impact that is as simple as possible. The whole codebase 
+currently sits at 850 lines. It should be understandable to anyone who invests an hour of their time. Current implementation
+does not use many Postgres-specific features but it will in the future, hence the focus on Postgresql. 
+
+The aim is to blend in with your existing development process. That means you get to continue to use your favourite schema
+evolution approach. The only hard requirement is when you generate code you need access to a running Postgresql instance with
+your latest schema.
 
 Pgmirror generates Doobie code needed to CRUD your way through typical business database schemas. People accept writing
-those as normal but that is just silly. To make it a little bit more useful than just a CRUD generator we are
-experimenting here with adding annotations to tables and columns in the form of SQL COMMENTs. You would do something 
+those as normal but that is just silly. To make pgmirror a little bit more useful than just a CRUD generator we are
+experimenting with adding annotations to tables and columns in the form of SQL COMMENTs. You would do something 
 like this:
 
 ```sql
