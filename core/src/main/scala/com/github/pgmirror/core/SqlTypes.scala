@@ -58,9 +58,9 @@ object SqlTypes {
 
       val underlyingPackage = pgs
       val finalType = if (underlyingPackage.isEmpty) {
-        s"$packagePrefix.models.${underlying}"
+        s"$packagePrefix.${underlying}"
       } else {
-        s"$packagePrefix.$underlyingPackage.models.$underlying"
+        s"$packagePrefix.$underlyingPackage.$underlying"
       }
       Right(ResolvedType(s"Seq[$finalType]", udt = true))
     case (pgs, pgt, "USER-DEFINED") =>
@@ -72,9 +72,9 @@ object SqlTypes {
 
       val underlyingPackage = pgs
       val finalType = if (underlyingPackage.isEmpty) {
-        s"$packagePrefix.models.${underlying}"
+        s"$packagePrefix.${underlying}"
       } else {
-        s"$packagePrefix.$underlyingPackage.models.$underlying"
+        s"$packagePrefix.$underlyingPackage.$underlying"
       }
       Right(ResolvedType(s"$finalType", udt = true))
     case (_, _, _) => Left(new Exception(s"Mapping for ($pgSchema, $pgType, $pgDataType) not found!"))

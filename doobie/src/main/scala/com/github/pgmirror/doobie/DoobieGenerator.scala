@@ -8,26 +8,13 @@ import com.github.pgmirror.core.{GeneratedFile, Generator, Settings}
 class DoobieGenerator(settings: Settings) extends Generator(settings) {
 
   override def generateUtil: Option[GeneratedFile] = Some {
-    GeneratedFile(
-      "repositories/doobie",
-      "DoobieRepository.scala",
-      generateBaseRepository()
-    )
+    GeneratedFile("", "DoobieRepository.scala", generateBaseRepository())
   }
 
   override def generateForTable(table: TableLike, foreignKeys: List[ForeignKey]): List[GeneratedFile] = {
     System.out.println(s"Processing: ${table.tableWithSchema}")
-    val repositoryPath =
-      if (table.isView)
-        Seq(table.schemaName, "repositories", "doobie", "views").filterNot(_.isEmpty).mkString("/")
-      else
-        Seq(table.schemaName, "repositories", "doobie", "models").filterNot(_.isEmpty).mkString("/")
-
-    val modelPath =
-      if (table.isView)
-        Seq(table.schemaName, "views").filterNot(_.isEmpty).mkString("/")
-      else
-        Seq(table.schemaName, "models").filterNot(_.isEmpty).mkString("/")
+    val repositoryPath = Seq(table.schemaName, "doobie").filterNot(_.isEmpty).mkString("/")
+    val modelPath = Seq(table.schemaName).filterNot(_.isEmpty).mkString("/")
 
     val repository: String =
       if (table.isView)
@@ -48,11 +35,6 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
 
   private def generateTableClass(settings: Settings, table: TableLike): String = {
     val pkColumn = table.columns.find(_.isPrimaryKey)
-    val packageSuffix =
-      if (table.isView)
-        "views"
-      else
-        "models"
 
     val uuidPkZero    = "new java.util.UUID(0,0)"
     val numericPkZero = "0"
@@ -75,7 +57,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
         table.columns.map(c => if (c.isPrimaryKey) pkZeroDefault(c) else c.propWithComment).mkString(",\n  ")
       }
 
-    s"""package ${tablePackage(settings.rootPackage, table.schemaName)}.$packageSuffix
+    s"""package ${tablePackage(settings.rootPackage, table.schemaName)}
        |
        |import io.circe.{Decoder, Encoder}
        |import io.circe.generic.extras.semiauto._
@@ -177,7 +159,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
 
 
     val updateDef = pkColumn.map { p =>
-      s"""  def updateSql(item: ${table.className}): Fragment =
+      s"""  override def updateSql(item: ${table.className}): Fragment =
          |    sql$tq
          |      update ${table.tableWithSchema}
          |         set ${table.columns.filterNot(_.isPrimaryKey).map(tc => s"${tc.columnNameQuoted} = $${item.${tc.propName}}").mkString(",\n             ")}
@@ -196,7 +178,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
          |${findOnes.mkString("\n")}
          |""".stripMargin
 
-    s"""package ${tablePackage(settings.rootPackage, table.schemaName)}.repositories.doobie.models
+    s"""package ${tablePackage(settings.rootPackage, table.schemaName)}.doobie
        |
        |import doobie._
        |import doobie.implicits._
@@ -205,8 +187,8 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |import java.util.UUID
        |import java.time.Instant
        |
-       |import ${tablePackage(settings.rootPackage, table.schemaName)}.models.${table.className}
-       |import ${settings.rootPackage}.repositories.doobie.DoobieRepository
+       |import ${tablePackage(settings.rootPackage, table.schemaName)}.${table.className}
+       |import ${settings.rootPackage}.DoobieRepository
        |
        |class ${table.className}Repository extends DoobieRepository[${table.className}, ${pkColumn.get.propType}] {
        |$crudDefs
@@ -274,7 +256,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
         ("", "")
 
     s"""
-       |package ${tablePackage(settings.rootPackage, view.schemaName)}.repositories.doobie.views
+       |package ${tablePackage(settings.rootPackage, view.schemaName)}
        |
        |import doobie._
        |import doobie.implicits._
@@ -284,7 +266,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |import java.util.UUID
        |import java.time.Instant
        |
-       |import ${tablePackage(settings.rootPackage, view.schemaName)}.views.${view.className}
+       |import ${tablePackage(settings.rootPackage, view.schemaName)}.${view.className}
        |
        |class ${view.className}DoobieRepository {
        |  def listFiltered(${filters.map(f => "      " + f._1).mkString("\n","\n","\n")}$offsetParam$limitParam  ): Query0[${view.className}] = {
@@ -302,7 +284,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
   }
 
   private def generateBaseRepository(): String =
-    s"""package ${settings.rootPackage}.repositories.doobie
+    s"""package ${settings.rootPackage}
       |
       |import doobie._
       |import io.circe.{Decoder, Encoder}
