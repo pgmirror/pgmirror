@@ -15,20 +15,19 @@ sealed abstract class Annotation(val regex: Regex)
 sealed abstract class ColumnAnnotation(override val regex: Regex) extends Annotation(regex)
 
 object ColumnAnnotation {
-  case object AppPk         extends ColumnAnnotation("""@AppPk\b""".r)
-  case object FilterEq      extends ColumnAnnotation("""@FilterEQ\b""".r)
-  case object FilterGt      extends ColumnAnnotation("""@FilterGT\b""".r)
-  case object FilterLt      extends ColumnAnnotation("""@FilterLT\b""".r)
-  case object FilterGtEq    extends ColumnAnnotation("""@FilterGE\b""".r)
-  case object FilterLtEq    extends ColumnAnnotation("""@FilterLE\b""".r)
-  case object Find          extends ColumnAnnotation("""@Find\b""".r)
-  case object FindOne       extends ColumnAnnotation("""@FindOne\b""".r)
-  case object Detail        extends ColumnAnnotation("""@Detail\b""".r)
-  case object Versioning    extends ColumnAnnotation("""@Versioning\b""".r)
-  case object NotNull       extends ColumnAnnotation("""@NotNull\b""".r)
+  case object Detail       extends ColumnAnnotation("""@Detail\b""".r)
+  case object FilterEq     extends ColumnAnnotation("""@FilterEQ\b""".r)
+  case object FilterGt     extends ColumnAnnotation("""@FilterGT\b""".r)
+  case object FilterLt     extends ColumnAnnotation("""@FilterLT\b""".r)
+  case object FilterGtEq   extends ColumnAnnotation("""@FilterGE\b""".r)
+  case object FilterLtEq   extends ColumnAnnotation("""@FilterLE\b""".r)
+  case object Find         extends ColumnAnnotation("""@Find\b""".r)
+  case object FindOne      extends ColumnAnnotation("""@FindOne\b""".r)
+  case object NotNull      extends ColumnAnnotation("""@NotNull\b""".r)
+  case object Versioning   extends ColumnAnnotation("""@Versioning\b""".r)
 
   val values: List[ColumnAnnotation] = List[ColumnAnnotation](
-    AppPk, FilterEq, FilterGt, FilterLt, FilterGtEq, FilterLtEq, Find, FindOne, Detail, Versioning, NotNull
+    Detail, FilterEq, FilterGt, FilterLt, FilterGtEq, FilterLtEq, Find, FindOne, NotNull, Versioning
   )
 
   val filterValues: Set[ColumnAnnotation] = Set(
@@ -80,7 +79,8 @@ case class Column(
   isPrimaryKey: Boolean,
   ordinalPosition: Int,
   comment: Option[String],
-  annotations: List[ColumnAnnotation] = Nil
+  annotations: List[ColumnAnnotation] = Nil,
+  hasDefault: Boolean,
 ) {
 
   def propType: String = {
@@ -111,6 +111,7 @@ case class Column(
   def tableColumn: String = s""""${tableName}"."${name}""""
 
   def columnNameQuoted: String = s""""$name""""
+
 }
 
 case class ForeignKey(

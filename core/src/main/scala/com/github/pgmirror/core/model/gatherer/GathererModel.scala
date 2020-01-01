@@ -95,7 +95,7 @@ object PgColumns {
       tableName = rs.getString("table_name"),
       columnName = rs.getString("column_name"),
       ordinalPosition = rs.getInt("ordinal_position"),
-      columnDefault = rs.getString("column_default"),
+      columnDefault = Option(rs.getString("column_default")).getOrElse(""),
       isNullable = rs.getString("is_nullable") == "YES",
       dataType = rs.getString("data_type"),
       udtSchema = rs.getString("udt_schema"),

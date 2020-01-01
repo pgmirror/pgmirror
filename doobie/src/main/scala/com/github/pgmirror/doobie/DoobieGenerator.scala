@@ -34,28 +34,37 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
     List(rootPackage, schemaName).filterNot(_.isEmpty).mkString(".")
 
   private def generateTableClass(settings: Settings, table: TableLike): String = {
-    val pkColumn = table.columns.find(_.isPrimaryKey)
-
-    val uuidPkZero    = "new java.util.UUID(0,0)"
-    val numericPkZero = "0"
-    val stringPkZero  = "\"\""
-
-    def pkZeroDefault(column: Column) =
-      column.propWithComment + " = " + (table.columns.filter(_.isPrimaryKey).head.propType match {
-      case "Int"            => numericPkZero
-      case "Long"           => numericPkZero
-      case "java.util.UUID" => uuidPkZero
-      case "String"         => stringPkZero
+    def columnDefault(p: String) = p  match {
+      case "Int"                     => "Int.MinValue"
+      case "Long"                    => "Long.MinValue"
+      case "Float"                   => "Float.NaN"
+      case "Double"                  => "Double.NaN"
+      case "BigDecimal"              => "BigDecimal(0)"
+      case "Boolean"                 => "false"
+      case "Array[Byte]"             => "Array[Byte]()"
+      case "String"                  => "\"\""
+      case "java.util.UUID"          => "new java.util.UUID(0,0)"
+      case "java.time.LocalDate"     => "java.time.LocalDate.MIN"
+      case "java.time.LocalTime"     => "java.time.LocalTime.MIN"
+      case "java.time.Instant"       => "java.time.Instant.MIN"
+      case "java.time.LocalDateTime" => "java.time.LocalDateTime.MIN"
+      case t if t.startsWith("Seq[") => s"$t()"
       case t                => throw new UnsupportedOperationException(s"Unsupported primary key type: $t")
-    })
+    }
+
+    def columnWithDefault(column: Column) =
+      column.propWithComment + " = " + columnDefault(column.propType)
 
     val columnList =
-      if (pkColumn.exists(_.annotations.contains(AppPk))) {
-        table.columns.map(_.propWithComment).mkString(",\n  ")
-      }
-      else {
-        table.columns.map(c => if (c.isPrimaryKey) pkZeroDefault(c) else c.propWithComment).mkString(",\n  ")
-      }
+      table.columns.map(c => if (c.hasDefault) columnWithDefault(c) else c.propWithComment).mkString(",\n  ")
+
+    val generateHasDefaults =
+      table.columns.map{ c =>
+        if (c.hasDefault)
+          s"_.${c.propName} == ${columnDefault(c.propType)}"
+        else
+          "_ => false"
+      }.mkString(",\n    ")
 
     s"""package ${tablePackage(settings.rootPackage, table.schemaName)}
        |
@@ -68,6 +77,14 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |)
        |
        |object ${table.className} {
+       |  val modelProperties = List(${table.columns.map(_.propName).mkString("\"", "\",\"", "\"")})
+       |
+       |  val tableColumns = List(${table.columns.map(_.columnNameQuoted).mkString(",")})
+       |
+       |  val hasDefault: List[${table.className} => Boolean] = List(
+       |    $generateHasDefaults
+       |  )
+       |
        |  implicit val customConfig: Configuration = Configuration.default.withSnakeCaseMemberNames
        |
        |  implicit val decode${table.className}: Decoder[${table.className}] = deriveConfiguredDecoder
@@ -81,26 +98,41 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
 
   private def generateTableRepository(settings: Settings, table: TableLike): String = {
     val pkColumn = table.columns.find(_.isPrimaryKey)
-    def appPk = pkColumn.exists(_.annotations.contains(AppPk))
 
-    val insertDefAppPk =
-      s"""  override def insertSql(item: ${table.className}): Fragment =
+    val insertDef =
+      s"""  override def insertSql(item: ${table.className}): Fragment = {
+         |    val columnsToInsert =
+         |      ${table.className}.tableColumns
+         |        .zip(${table.className}.hasDefault)
+         |        .filterNot{ case (_, p) => p(item)}
+         |        .map{ case (col, _) => col}
+         |
+         |    val insertInto =
+         |      Fragment.const(
+         |        columnsToInsert.mkString(${tq}insert into ${table.tableWithSchema} (${tq},", ", ") ")
+         |      )
+         |
+         |    val values =
+         |      Fragment.const(
+         |        columnsToInsert.mkString("(select ", ", ", " ")
+         |      )
+         |
+         |    val subselect =
+         |      fr${tq}from (SELECT (___inner::${table.tableWithSchema}).* from (select ${table.columns.map(tc => s"$${item.${tc.propName}}").mkString(",")}) as ___inner) as __outer)${tq}
+         |
+         |    val returning = fr${tq}returning ${table.columns.map(_.tableColumn).mkString(",")}${tq}
+         |
+         |    insertInto ++ values ++ subselect ++ returning
+         |  }
+         |""".stripMargin
+
+    val insertAllDef =
+      s"""  override def insertAllSql(item: ${table.className}): Fragment =
          |    sql$tq
          |      insert into ${table.tableWithSchema}
          |             (${table.columns.map(_.columnNameQuoted).mkString(",\n              ")})
          |             values
          |             (${table.columns.map(tc => s"$${item.${tc.propName}}").mkString(",\n              ")})
-         |      returning ${table.columns.map(_.tableColumn).mkString(",\n                ")}
-         |    $tq
-         |""".stripMargin
-
-    val insertDefAutoPk =
-      s"""  override def insertSql(item: ${table.className}): Fragment =
-         |    sql$tq
-         |      insert into ${table.tableWithSchema}
-         |             (${table.columns.filterNot(_.isPrimaryKey).map(_.columnNameQuoted).mkString(",\n              ")})
-         |             values
-         |             (${table.columns.filterNot(_.isPrimaryKey).map(tc => s"$${item.${tc.propName}}").mkString(",\n              ")})
          |      returning ${table.columns.map(_.tableColumn).mkString(",\n                ")}
          |    $tq
          |""".stripMargin
@@ -170,7 +202,8 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
     }.getOrElse("")
 
     val crudDefs =
-      s"""${if (appPk) insertDefAppPk else insertDefAutoPk}
+      s"""$insertDef
+         |$insertAllDef
          |$getDef
          |$deleteDef
          |$updateDef
@@ -293,17 +326,22 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
       |
       |abstract class DoobieRepository[E: Read : Encoder: Decoder, PK] {
       |  def insertSql(item: E): Fragment = Fragment.empty
+      |  def insertAllSql(item: E): Fragment = Fragment.empty
       |  def getSql(pk: PK): Fragment = Fragment.empty
       |  def deleteSql(pk: PK): Fragment = Fragment.empty
       |  def updateSql(item: E): Fragment = Fragment.empty
       |
       |  def insertQery(item: E): Query0[E] = insertSql(item).query[E]
+      |  def insertAllQery(item: E): Query0[E] = insertAllSql(item).query[E]
       |  def getQuery(pk: PK): Query0[E] = getSql(pk).query[E]
       |  def deleteQuery(pk: PK): Query0[E] = deleteSql(pk).query[E]
       |  def updateQuery(item: E): Query0[E] = updateSql(item).query[E]
       |
       |  def insert(item: E): ConnectionIO[E] =
       |    insertQery(item).unique
+      |
+      |  def insertAllValues(item: E): ConnectionIO[E] =
+      |    insertAllQery(item).unique
       |
       |  def get(pk: PK): ConnectionIO[Option[E]] =
       |    getQuery(pk).option

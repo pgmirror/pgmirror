@@ -12,7 +12,7 @@ case class Settings(
   rootPackage: String,
   // If you set schemas list then the schemaNameInclude will be ignored
   schemas: List[String] = List(),
-  schemaNameInclude: Regex = "^public$".r,
+  schemaNameInclude: Regex = "^.*$".r,
   tableNameInclude: Regex = ".*".r,
   udtNameInclude: Regex = ".*".r,
   // A schema with this name will not generate a package

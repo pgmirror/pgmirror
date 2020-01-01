@@ -42,19 +42,23 @@ class DatabaseSchemaGatherer(settings: Settings) {
       }
 
     val pgTables =
-      rawTables.filter(t => settings.schemaFilter.matcher(t.tableSchema).matches() &&
-                            settings.tableFilter.matcher(t.tableName).matches())
+      if (settings.schemas.nonEmpty) {
+          rawTables
+      } else {
+        rawTables.filter(t => settings.schemaFilter.matcher(t.tableSchema).matches() &&
+          settings.tableFilter.matcher(t.tableName).matches())
+      }
+    val detectedSchemas = pgTables.map(_.tableSchema).toSet
+    val detectedTables = pgTables.map(_.tableName).toSet
 
     val pgColumns = runStatement(database.prepareStatement(PgColumns.sql), PgColumns.fromResultSet)
-      .filter(t => settings.schemaFilter.matcher(t.tableSchema).matches() &&
-                   settings.tableFilter.matcher(t.tableName).matches())
-
+      .filter(t => detectedSchemas.contains(t.tableSchema) && detectedTables.contains(t.tableName))
 
     // TODO implement Enums (maybe)
     // val pgEnums = runStatement(database.prepareStatement(PgEnums.sql), PgEnums.fromResultSet)
     //   .filter(t => settings.schemaFilter.matcher(t.enumSchema).matches())
 
-    // TODO implement UDTs
+    // TODO implement UDTs (maybe)
     // val pgUdtAttributes = runStatement(PgUdtAttributes.sql, PgUdtAttributes.fromResultSet)
 
     val columns = pgColumns.map { pgc =>
@@ -75,7 +79,8 @@ class DatabaseSchemaGatherer(settings: Settings) {
           isPrimaryKey = pgc.isPrimaryKey,
           ordinalPosition = pgc.ordinalPosition,
           comment = pgc.description.filterNot(_.isEmpty),
-          annotations = annotations.toList
+          annotations = annotations.toList,
+          hasDefault = !pgc.columnDefault.isBlank
         )
       }
     }
