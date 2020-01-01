@@ -54,7 +54,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
       else
         "models"
 
-    val uuidPkZero    = "new UUID(0,0)"
+    val uuidPkZero    = "new java.util.UUID(0,0)"
     val numericPkZero = "0"
     val stringPkZero  = "\"\""
 

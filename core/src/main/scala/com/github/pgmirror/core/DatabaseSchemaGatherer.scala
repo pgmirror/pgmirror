@@ -61,7 +61,7 @@ class DatabaseSchemaGatherer(settings: Settings) {
       val schema = if (pgc.udtSchema == settings.defaultSchema) "" else pgc.udtSchema
       val tableSchema = if (pgc.tableSchema == settings.defaultSchema) "" else pgc.tableSchema
 
-      SqlTypes.typeMapping(schema, pgc.udtName, pgc.dataType).map { dt =>
+      SqlTypes.typeMapping(settings.rootPackage, schema, pgc.udtName, pgc.dataType).map { dt =>
         val annotations = columnAnnotations(pgc.description)
 
         Column(
@@ -70,7 +70,7 @@ class DatabaseSchemaGatherer(settings: Settings) {
           name = pgc.columnName,
           columnType = pgc.dataType,
           typeName = s"${pgc.udtSchema}.${pgc.udtName}",
-          modelType = dt,
+          modelType = dt.modelType,
           isNullable = pgc.isNullable && !annotations.contains(ColumnAnnotation.NotNull),
           isPrimaryKey = pgc.isPrimaryKey,
           ordinalPosition = pgc.ordinalPosition,

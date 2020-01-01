@@ -2,40 +2,52 @@ package com.github.pgmirror.core
 
 object SqlTypes {
 
-  def typeMapping(pgSchema: String, pgType: String, pgDataType: String): Either[Throwable, String] = (pgSchema, pgType, pgDataType) match {
-    case (_, _, "bigint") => Right("Long")
-    case (_, _, "int8") => Right("Long")
-    case (_, _, "bigserial") => Right("Long")
-    case (_, _, "boolean") => Right("Boolean")
-    case (_, _, "bool") => Right("Boolean")
-    case (_, _, "bytea") => Right("Array[Byte]")
-    case (_, _, "character") => Right("String")
-    case (_, _, "character varying") => Right("String")
-    case (_, _, "varchar") => Right("String")
-    case (_, _, "date") => Right("java.time.LocalDate")
-    case (_, _, "double precision") => Right("Double")
-    case (_, _, "float8") => Right("Double")
-    case (_, _, "integer") => Right("Int")
-    case (_, _, "int") => Right("Int")
-    case (_, _, "int4") => Right("Int")
-    case (_, _, "money") => Right("BigDecimal")
-    case (_, _, "numeric") => Right("BigDecimal")
-    case (_, _, "real") => Right("Float")
-    case (_, _, "float4") => Right("Float")
-    case (_, _, "smallint") => Right("Int")
-    case (_, _, "int2") => Right("Int")
-    case (_, _, "smallserial") => Right("Int")
-    case (_, _, "serial") => Right("Int")
-    case (_, _, "text") => Right("String")
-    case (_, _, "time") => Right("java.time.LocalTime")
-    case (_, _, "timetz") => Right("java.time.LocalTime")
-    case (_, _, "time with time zone") => Right("java.time.LocalTime")
-    case (_, _, "timestamp") => Right("java.time.Instant")
-    case (_, _, "timestamptz") => Right("java.time.Instant")
-    case (_, _, "timestamp with time zone") => Right("java.time.Instant")
-    case (_, _, "uuid") => Right("java.util.UUID")
-    case (_, _, "json") => Right("String")
-    case ("pg_catalog", pgt, "ARRAY") => typeMapping("", "", pgt.replaceFirst("_", "")).map(t => s"Seq[$t]")
+  case class ResolvedType(modelType: String, udt: Boolean = false)
+
+  def typeMapping(
+    packagePrefix: String,
+    pgSchema: String,
+    pgType: String,
+    pgDataType: String
+  ): Either[Throwable, ResolvedType] = (pgSchema, pgType, pgDataType) match {
+    case (_, _, "bigint") => Right(ResolvedType("Long"))
+    case (_, _, "int8") => Right(ResolvedType("Long"))
+    case (_, _, "bigserial") => Right(ResolvedType("Long"))
+    case (_, _, "boolean") => Right(ResolvedType("Boolean"))
+    case (_, _, "bool") => Right(ResolvedType("Boolean"))
+    case (_, _, "bytea") => Right(ResolvedType("Array[Byte]"))
+    case (_, _, "character") => Right(ResolvedType("String"))
+    case (_, _, "character varying") => Right(ResolvedType("String"))
+    case (_, _, "varchar") => Right(ResolvedType("String"))
+    case (_, _, "date") => Right(ResolvedType("java.time.LocalDate"))
+    case (_, _, "double precision") => Right(ResolvedType("Double"))
+    case (_, _, "float8") => Right(ResolvedType("Double"))
+    case (_, _, "integer") => Right(ResolvedType("Int"))
+    case (_, _, "int") => Right(ResolvedType("Int"))
+    case (_, _, "int4") => Right(ResolvedType("Int"))
+    case (_, _, "money") => Right(ResolvedType("BigDecimal"))
+    case (_, _, "numeric") => Right(ResolvedType("BigDecimal"))
+    case (_, _, "real") => Right(ResolvedType("Float"))
+    case (_, _, "float4") => Right(ResolvedType("Float"))
+    case (_, _, "smallint") => Right(ResolvedType("Int"))
+    case (_, _, "int2") => Right(ResolvedType("Int"))
+    case (_, _, "smallserial") => Right(ResolvedType("Int"))
+    case (_, _, "serial") => Right(ResolvedType("Int"))
+    case (_, _, "text") => Right(ResolvedType("String"))
+    case (_, _, "time") => Right(ResolvedType("java.time.LocalTime"))
+    case (_, _, "timetz") => Right(ResolvedType("java.time.LocalTime"))
+    case (_, _, "time with time zone") => Right(ResolvedType("java.time.LocalTime"))
+    case (_, _, "timestamp") => Right(ResolvedType("java.time.Instant"))
+    case (_, _, "timestamptz") => Right(ResolvedType("java.time.Instant"))
+    case (_, _, "timestamp with time zone") => Right(ResolvedType("java.time.Instant"))
+    case (_, _, "uuid") => Right(ResolvedType("java.util.UUID"))
+    case (_, _, "json") => Right(ResolvedType("String"))
+    case ("pg_catalog", pgt, "ARRAY") =>
+      typeMapping(
+        packagePrefix,
+        "",
+        "", pgt.replaceFirst("_", "")
+      ).map(t => ResolvedType(s"Seq[${t.modelType}]", t.udt))
     case (pgs, pgt, "ARRAY") =>
       val underlying =
         pgt.replaceFirst("_", "")
@@ -45,8 +57,12 @@ object SqlTypes {
           .mkString
 
       val underlyingPackage = pgs
-      val finalType = if (underlyingPackage.isEmpty) underlying else s"$underlyingPackage.$underlying"
-      Right(s"Seq[$finalType]")
+      val finalType = if (underlyingPackage.isEmpty) {
+        s"$packagePrefix.models.${underlying}"
+      } else {
+        s"$packagePrefix.$underlyingPackage.models.$underlying"
+      }
+      Right(ResolvedType(s"Seq[$finalType]", udt = true))
     case (pgs, pgt, "USER-DEFINED") =>
       val underlying =
         pgt.split("_")
@@ -55,8 +71,12 @@ object SqlTypes {
           .mkString
 
       val underlyingPackage = pgs
-      val finalType = if (underlyingPackage.isEmpty) underlying else s"$underlyingPackage.$underlying"
-      Right(s"$finalType")
+      val finalType = if (underlyingPackage.isEmpty) {
+        s"$packagePrefix.models.${underlying}"
+      } else {
+        s"$packagePrefix.$underlyingPackage.models.$underlying"
+      }
+      Right(ResolvedType(s"$finalType", udt = true))
     case (_, _, _) => Left(new Exception(s"Mapping for ($pgSchema, $pgType, $pgDataType) not found!"))
   }
 }
