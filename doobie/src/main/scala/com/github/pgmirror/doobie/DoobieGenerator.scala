@@ -8,12 +8,12 @@ import com.github.pgmirror.core.{GeneratedFile, Generator, Settings}
 class DoobieGenerator(settings: Settings) extends Generator(settings) {
 
   override def generateUtil: Option[GeneratedFile] = Some {
-    GeneratedFile("", "DoobieRepository.scala", generateBaseRepository())
+    GeneratedFile("repository", "DoobieRepository.scala", generateBaseRepository())
   }
 
   override def generateForTable(table: TableLike, foreignKeys: List[ForeignKey]): List[GeneratedFile] = {
     System.out.println(s"Processing: ${table.tableWithSchema}")
-    val repositoryPath = Seq(table.schemaName, "doobie").filterNot(_.isEmpty).mkString("/")
+    val repositoryPath = Seq(table.schemaName, "repository").filterNot(_.isEmpty).mkString("/")
     val modelPath = Seq(table.schemaName).filterNot(_.isEmpty).mkString("/")
 
     val repository: String =
@@ -211,7 +211,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
          |${findOnes.mkString("\n")}
          |""".stripMargin
 
-    s"""package ${tablePackage(settings.rootPackage, table.schemaName)}.doobie
+    s"""package ${tablePackage(settings.rootPackage, table.schemaName)}.repository
        |
        |import doobie._
        |import doobie.implicits._
@@ -221,7 +221,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |import java.time.Instant
        |
        |import ${tablePackage(settings.rootPackage, table.schemaName)}.${table.className}
-       |import ${settings.rootPackage}.DoobieRepository
+       |import ${settings.rootPackage}.repository.DoobieRepository
        |
        |class ${table.className}Repository extends DoobieRepository[${table.className}, ${pkColumn.get.propType}] {
        |$crudDefs
@@ -317,7 +317,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
   }
 
   private def generateBaseRepository(): String =
-    s"""package ${settings.rootPackage}
+    s"""package ${settings.rootPackage}.repository
       |
       |import doobie._
       |import io.circe.{Decoder, Encoder}
