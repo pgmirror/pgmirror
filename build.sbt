@@ -3,7 +3,7 @@ lazy val scala213 = "2.13.1"
 lazy val supportedScalaVersions = List(scala213, scala212)
 
 ThisBuild / organization := "com.github.pgmirror"
-ThisBuild / version      := "0.1.0"
+ThisBuild / version      := "0.1.1-SNAPSHOT"
 ThisBuild / scalaVersion := scala212
 
 ThisBuild / githubTokenSource := Some(TokenSource.Environment("PGMIRROR_GITHUB_TOKEN"))

@@ -48,7 +48,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
       case "java.time.LocalTime"     => "java.time.LocalTime.MIN"
       case "java.time.Instant"       => "java.time.Instant.MIN"
       case "java.time.LocalDateTime" => "java.time.LocalDateTime.MIN"
-      case t if t.startsWith("Seq[") => s"$t()"
+      case t if t.startsWith("Array[") => s"$t()"
       case t                => throw new UnsupportedOperationException(s"Unsupported primary key type: $t")
     }
 
@@ -215,6 +215,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |
        |import doobie._
        |import doobie.implicits._
+       |import doobie.implicits.javatime._
        |import doobie.postgres.implicits._
        |
        |import java.util.UUID
@@ -288,8 +289,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
       else
         ("", "")
 
-    s"""
-       |package ${tablePackage(settings.rootPackage, view.schemaName)}
+    s"""package ${tablePackage(settings.rootPackage, view.schemaName)}.repository
        |
        |import doobie._
        |import doobie.implicits._
@@ -301,7 +301,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |
        |import ${tablePackage(settings.rootPackage, view.schemaName)}.${view.className}
        |
-       |class ${view.className}DoobieRepository {
+       |class ${view.className}Repository {
        |  def listFiltered(${filters.map(f => "      " + f._1).mkString("\n","\n","\n")}$offsetParam$limitParam  ): Query0[${view.className}] = {
        |${filters.map(f => "    " + f._2).mkString("\n")}
        |    val selectFr: Fragment =
@@ -325,23 +325,23 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
       |
       |
       |abstract class DoobieRepository[E: Read : Encoder: Decoder, PK] {
-      |  def insertSql(item: E): Fragment = Fragment.empty
-      |  def insertAllSql(item: E): Fragment = Fragment.empty
-      |  def getSql(pk: PK): Fragment = Fragment.empty
-      |  def deleteSql(pk: PK): Fragment = Fragment.empty
-      |  def updateSql(item: E): Fragment = Fragment.empty
+      |  def insertSql(item: E): Fragment
+      |  def insertAllSql(item: E): Fragment
+      |  def getSql(pk: PK): Fragment
+      |  def deleteSql(pk: PK): Fragment
+      |  def updateSql(item: E): Fragment
       |
-      |  def insertQery(item: E): Query0[E] = insertSql(item).query[E]
-      |  def insertAllQery(item: E): Query0[E] = insertAllSql(item).query[E]
+      |  def insertQuery(item: E): Query0[E] = insertSql(item).query[E]
+      |  def insertAllQuery(item: E): Query0[E] = insertAllSql(item).query[E]
       |  def getQuery(pk: PK): Query0[E] = getSql(pk).query[E]
       |  def deleteQuery(pk: PK): Query0[E] = deleteSql(pk).query[E]
       |  def updateQuery(item: E): Query0[E] = updateSql(item).query[E]
       |
       |  def insert(item: E): ConnectionIO[E] =
-      |    insertQery(item).unique
+      |    insertQuery(item).unique
       |
       |  def insertAllValues(item: E): ConnectionIO[E] =
-      |    insertAllQery(item).unique
+      |    insertAllQuery(item).unique
       |
       |  def get(pk: PK): ConnectionIO[Option[E]] =
       |    getQuery(pk).option

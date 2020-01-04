@@ -48,7 +48,7 @@ object SqlTypes {
         packagePrefix,
         "",
         "", pgt.replaceFirst("_", "")
-      ).map(t => ResolvedType(s"Seq[${t.modelType}]", t.udt))
+      ).map(t => ResolvedType(s"Array[${t.modelType}]", t.udt))
     case (pgs, pgt, "ARRAY") =>
       val underlying =
         pgt.replaceFirst("_", "")
@@ -63,7 +63,7 @@ object SqlTypes {
       } else {
         s"$packagePrefix.$underlyingPackage.$underlying"
       }
-      Right(ResolvedType(s"Seq[$finalType]", udt = true))
+      Right(ResolvedType(s"Array[$finalType]", udt = true))
     case (pgs, pgt, "USER-DEFINED") =>
       val underlying =
         pgt.split("_")
