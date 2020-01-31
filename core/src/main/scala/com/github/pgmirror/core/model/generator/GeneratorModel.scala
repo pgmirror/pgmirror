@@ -96,7 +96,11 @@ case class Column(
 
     val rawPropName = nameParts.head + nameParts.tail.map(_.capitalize).mkString
 
-    if (rawPropName.matches("""^\d.*""") || rawPropName == "type")
+    if (rawPropName.matches("""^\d.*""")
+      || rawPropName == "type"
+      || rawPropName == "final"
+      || rawPropName == "class"
+    )
       "`"+rawPropName+"`"
     else
       rawPropName

@@ -11,7 +11,7 @@ object Main extends App {
       password = args(2),
       rootPath = args(3),
       rootPackage = args(4),
-      schemas = List("public", "auth"),
+      schemas = List("public"),
       defaultSchema = ""
     )
   ).generate()

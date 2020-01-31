@@ -42,7 +42,8 @@ object SqlTypes {
     case (_, _, "timestamp with time zone") => Right(ResolvedType("java.time.Instant"))
     case (_, _, "timestamp without time zone") => Right(ResolvedType("java.time.Instant"))
     case (_, _, "uuid") => Right(ResolvedType("java.util.UUID"))
-    case (_, _, "json") => Right(ResolvedType("String"))
+    case (_, _, "json") => Right(ResolvedType("io.circe.Json"))
+    case (_, _, "jsonb") => Right(ResolvedType("io.circe.Json"))
     case ("pg_catalog", pgt, "ARRAY") =>
       typeMapping(
         packagePrefix,

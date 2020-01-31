@@ -17,7 +17,6 @@ lazy val core = (project in file("core"))
     libraryDependencies ++= Seq(
       "com.github.pathikrit" %% "better-files" % "3.8.0",
       "org.postgresql" % "postgresql" % "42.2.8",
-      "com.beachape" %% "enumeratum" % "1.5.13",
       "org.scalatest" %% "scalatest" % "3.1.0" % Test,
     )
   )
@@ -34,9 +33,9 @@ lazy val pgmirror = (project in file("."))
     crossScalaVersions := Nil,
     publish / skip     := true,
     libraryDependencies ++= Seq(
-      "org.tpolecat"             %% "doobie-core" % "0.8.6",
-      "org.tpolecat"             %% "doobie-postgres" % "0.8.6",
-      "org.tpolecat"             %% "doobie-postgres-circe" % "0.8.6",
+      "org.tpolecat"             %% "doobie-core" % "0.8.8",
+      "org.tpolecat"             %% "doobie-postgres" % "0.8.8",
+      "org.tpolecat"             %% "doobie-postgres-circe" % "0.8.8",
       "io.circe"                 %% "circe-core" % "0.12.3",
       "io.circe"                 %% "circe-generic" % "0.12.3",
       "io.circe"                 %% "circe-generic-extras" % "0.12.2",

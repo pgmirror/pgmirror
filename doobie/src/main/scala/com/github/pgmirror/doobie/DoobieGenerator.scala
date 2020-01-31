@@ -33,38 +33,31 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
   private def tablePackage(rootPackage: String, schemaName: String): String =
     List(rootPackage, schemaName).filterNot(_.isEmpty).mkString(".")
 
+  private def columnDefault(p: String) = p match {
+    case "Int"                     => "Int.MinValue"
+    case "Long"                    => "Long.MinValue"
+    case "Float"                   => "Float.NaN"
+    case "Double"                  => "Double.NaN"
+    case "BigDecimal"              => "BigDecimal(0)"
+    case "Boolean"                 => "false"
+    case "Array[Byte]"             => "Array[Byte]()"
+    case "String"                  => "\"\""
+    case "java.util.UUID"          => "new java.util.UUID(0,0)"
+    case "java.time.LocalDate"     => "java.time.LocalDate.MIN"
+    case "java.time.LocalTime"     => "java.time.LocalTime.MIN"
+    case "java.time.Instant"       => "java.time.Instant.MIN"
+    case "java.time.LocalDateTime" => "java.time.LocalDateTime.MIN"
+    case t if t.startsWith("Array[") => s"$t()"
+    case t                => throw new UnsupportedOperationException(s"Unsupported primary key type: $t")
+  }
+
   private def generateTableClass(settings: Settings, table: TableLike): String = {
-    def columnDefault(p: String) = p  match {
-      case "Int"                     => "Int.MinValue"
-      case "Long"                    => "Long.MinValue"
-      case "Float"                   => "Float.NaN"
-      case "Double"                  => "Double.NaN"
-      case "BigDecimal"              => "BigDecimal(0)"
-      case "Boolean"                 => "false"
-      case "Array[Byte]"             => "Array[Byte]()"
-      case "String"                  => "\"\""
-      case "java.util.UUID"          => "new java.util.UUID(0,0)"
-      case "java.time.LocalDate"     => "java.time.LocalDate.MIN"
-      case "java.time.LocalTime"     => "java.time.LocalTime.MIN"
-      case "java.time.Instant"       => "java.time.Instant.MIN"
-      case "java.time.LocalDateTime" => "java.time.LocalDateTime.MIN"
-      case t if t.startsWith("Array[") => s"$t()"
-      case t                => throw new UnsupportedOperationException(s"Unsupported primary key type: $t")
-    }
 
     def columnWithDefault(column: Column) =
       column.propWithComment + " = " + columnDefault(column.propType)
 
     val columnList =
       table.columns.map(c => if (c.hasDefault) columnWithDefault(c) else c.propWithComment).mkString(",\n  ")
-
-    val generateHasDefaults =
-      table.columns.map{ c =>
-        if (c.hasDefault)
-          s"_.${c.propName} == ${columnDefault(c.propType)}"
-        else
-          "_ => false"
-      }.mkString(",\n    ")
 
     s"""package ${tablePackage(settings.rootPackage, table.schemaName)}
        |
@@ -77,13 +70,6 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |)
        |
        |object ${table.className} {
-       |  val modelProperties = List(${table.columns.map(_.propName).mkString("\"", "\",\"", "\"")})
-       |
-       |  val tableColumns = List(${table.columns.map(_.columnNameQuoted).mkString(",")})
-       |
-       |  val hasDefault: List[${table.className} => Boolean] = List(
-       |    $generateHasDefaults
-       |  )
        |
        |  implicit val customConfig: Configuration = Configuration.default.withSnakeCaseMemberNames
        |
@@ -99,22 +85,17 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
   private def generateTableRepository(settings: Settings, table: TableLike): String = {
     val pkColumn = table.columns.find(_.isPrimaryKey)
 
+
     val insertDef =
       s"""  override def insertSql(item: ${table.className}): Fragment = {
-         |    val columnsToInsert =
-         |      ${table.className}.tableColumns
-         |        .zip(${table.className}.hasDefault)
-         |        .filterNot{ case (_, p) => p(item)}
-         |        .map{ case (col, _) => col}
-         |
          |    val insertInto =
          |      Fragment.const(
-         |        columnsToInsert.mkString(${tq}insert into ${table.tableWithSchema} (${tq},", ", ") ")
+         |        columnsToInsert(item).mkString(${tq}insert into ${table.tableWithSchema} (${tq},", ", ") ")
          |      )
          |
          |    val values =
          |      Fragment.const(
-         |        columnsToInsert.mkString("(select ", ", ", " ")
+         |        columnsToInsert(item).mkString("(select ", ", ", " ")
          |      )
          |
          |    val subselect =
@@ -211,12 +192,21 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
          |${findOnes.mkString("\n")}
          |""".stripMargin
 
+    val generateHasDefaults =
+      table.columns.map{ c =>
+        if (c.hasDefault)
+          s"_.${c.propName} == ${columnDefault(c.propType)}"
+        else
+          "_ => false"
+      }.mkString(",\n    ")
+
     s"""package ${tablePackage(settings.rootPackage, table.schemaName)}.repository
        |
        |import doobie._
        |import doobie.implicits._
        |import doobie.implicits.javatime._
        |import doobie.postgres.implicits._
+       |import doobie.postgres.circe.jsonb.implicits._
        |
        |import java.util.UUID
        |import java.time.Instant
@@ -224,9 +214,18 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |import ${tablePackage(settings.rootPackage, table.schemaName)}.${table.className}
        |import ${settings.rootPackage}.repository.DoobieRepository
        |
-       |class ${table.className}Repository extends DoobieRepository[${table.className}, ${pkColumn.get.propType}] {
+       |trait ${table.className}Repository extends DoobieRepository[${table.className}, ${pkColumn.get.propType}] {
+       |  val tableColumns = List(${table.columns.map(_.columnNameQuoted).mkString(",")})
+       |
+       |  val hasDefault: List[${table.className} => Boolean] = List(
+       |    $generateHasDefaults
+       |  )
+       |
        |$crudDefs
        |}
+       |
+       |object ${table.className}DefaultRepository extends ${table.className}Repository
+       |
        """.stripMargin
   }
 
@@ -294,6 +293,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |import doobie._
        |import doobie.implicits._
        |import doobie.postgres.implicits._
+       |import doobie.postgres.circe.implicits._
        |import Fragments.{ in, whereAndOpt }
        |
        |import java.util.UUID
@@ -301,7 +301,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |
        |import ${tablePackage(settings.rootPackage, view.schemaName)}.${view.className}
        |
-       |class ${view.className}Repository {
+       |trait ${view.className}Repository {
        |  def listFiltered(${filters.map(f => "      " + f._1).mkString("\n","\n","\n")}$offsetParam$limitParam  ): Query0[${view.className}] = {
        |${filters.map(f => "    " + f._2).mkString("\n")}
        |    val selectFr: Fragment =
@@ -312,6 +312,8 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |    q.query[${view.className}]
        |  }
        |}
+       |
+       |object ${view.className}DefaultRepository extends ${view.className}Repository
        |
        |""".stripMargin
   }
@@ -325,6 +327,15 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
       |
       |
       |abstract class DoobieRepository[E: Read : Encoder: Decoder, PK] {
+      |  def tableColumns: List[String]
+      |  val hasDefault: List[E => Boolean]
+      |
+      |  protected def columnsToInsert(item: E): List[String] =
+      |    tableColumns
+      |      .zip(hasDefault)
+      |      .filterNot{ case (_, p) => p(item)}
+      |      .map{ case (col, _) => col}
+      |
       |  def insertSql(item: E): Fragment
       |  def insertAllSql(item: E): Fragment
       |  def getSql(pk: PK): Fragment
