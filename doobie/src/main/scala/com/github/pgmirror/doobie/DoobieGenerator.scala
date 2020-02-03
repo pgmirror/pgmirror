@@ -293,7 +293,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |import doobie._
        |import doobie.implicits._
        |import doobie.postgres.implicits._
-       |import doobie.postgres.circe.implicits._
+       |import doobie.postgres.circe.jsonb.implicits._
        |import Fragments.{ in, whereAndOpt }
        |
        |import java.util.UUID
