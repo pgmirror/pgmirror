@@ -13,16 +13,18 @@ abstract class Generator(settings: Settings) {
    * The base method that runs the whole process of gathering database schema
    * and running the generators.
    */
-  final def generate(): Unit = {
-    (for (
+  final def generate(): Seq[File] = {
+    (for {
       database <- new DatabaseSchemaGatherer(settings).gatherDatabase
-    ) yield {
-      generateForAllTables(database.tables ++ database.views, database.foreignKeys)
-    }) match {
+      file <- Right(generateForAllTables(database.tables ++ database.views, database.foreignKeys))
+    } yield file
+    ) match {
       case Left(errors) =>
         errors.foreach(println)
-      case _ =>
+        Seq()
+      case Right(files) =>
         println("Done!")
+        files
     }
 
   }
@@ -33,7 +35,7 @@ abstract class Generator(settings: Settings) {
    * @param tables List of all table-like objects (tables and views).
    * @param foreignKeys List of all foreign keys in the schema.
    */
-  private final def generateForAllTables(tables: List[TableLike], foreignKeys: List[ForeignKey]): Unit = {
+  private final def generateForAllTables(tables: List[TableLike], foreignKeys: List[ForeignKey]): Seq[File] = {
     import settings._
 
     val rootOutputDir = rootPackage match {
@@ -46,11 +48,13 @@ abstract class Generator(settings: Settings) {
     val allTableFiles = tables.flatMap(generateForTable(_, foreignKeys))
     val utilFile = generateUtil.toList
 
-    (allTableFiles ++ utilFile).foreach { ts =>
+    (allTableFiles ++ utilFile).map { ts =>
       val fileOutputDir = rootOutputDir / ts.relativePath
       fileOutputDir.createDirectories()
       val file = fileOutputDir / ts.filename
       file.write(ts.content)(charset = StandardCharsets.UTF_8)
+
+      file
     }
   }
 
