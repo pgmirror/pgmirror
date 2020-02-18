@@ -3,14 +3,14 @@ package com.github.pgmirror.core.model.gatherer
 import java.sql.ResultSet
 
 case class PgForeignKeys(
-  tableSchema: String,
-  tableName: String,
-  constraintSchema: String,
-  constraintName: String,
-  columnName: String,
-  foreignTableSchema: String,
-  foreignTableName: String,
-  foreignColumnName: String
+    tableSchema: String,
+    tableName: String,
+    constraintSchema: String,
+    constraintName: String,
+    columnName: String,
+    foreignTableSchema: String,
+    foreignTableName: String,
+    foreignColumnName: String,
 )
 object PgForeignKeys {
   def fromResultSet(rs: ResultSet): PgForeignKeys = {
@@ -51,7 +51,13 @@ object PgForeignKeys {
 
 }
 
-case class PgTables(tableSchema: String, tableName: String, tableType: String, isInsertableInto: Boolean, description: Option[String])
+case class PgTables(
+    tableSchema: String,
+    tableName: String,
+    tableType: String,
+    isInsertableInto: Boolean,
+    description: Option[String],
+)
 object PgTables {
   def fromResultSet(rs: ResultSet): PgTables =
     PgTables(
@@ -76,17 +82,17 @@ object PgTables {
       |""".stripMargin
 }
 case class PgColumns(
-  tableSchema: String,
-  tableName: String,
-  columnName: String,
-  ordinalPosition: Int,
-  columnDefault: String,
-  isNullable: Boolean,
-  isPrimaryKey: Boolean,
-  dataType: String,
-  udtSchema: String,
-  udtName: String,
-  description: Option[String]
+    tableSchema: String,
+    tableName: String,
+    columnName: String,
+    ordinalPosition: Int,
+    columnDefault: String,
+    isNullable: Boolean,
+    isPrimaryKey: Boolean,
+    dataType: String,
+    udtSchema: String,
+    udtName: String,
+    description: Option[String],
 )
 object PgColumns {
   def fromResultSet(rs: ResultSet): PgColumns =
@@ -101,7 +107,7 @@ object PgColumns {
       udtSchema = rs.getString("udt_schema"),
       udtName = rs.getString("udt_name"),
       isPrimaryKey = rs.getBoolean("is_primary"),
-      description = Option(rs.getString("column_description"))
+      description = Option(rs.getString("column_description")),
     )
 
   val sql: String =
@@ -121,7 +127,16 @@ object PgColumns {
 
 }
 
-case class PgUdtAttributes(udtSchema: String, udtName: String, attributeName: String, ordinalPosition: Int, isNullable: Boolean, dataType: String, attributeUdtSchema: String, attributeUdtName: String)
+case class PgUdtAttributes(
+    udtSchema: String,
+    udtName: String,
+    attributeName: String,
+    ordinalPosition: Int,
+    isNullable: Boolean,
+    dataType: String,
+    attributeUdtSchema: String,
+    attributeUdtName: String,
+)
 object PgUdtAttributes {
   def fromResultSet(rs: ResultSet): PgUdtAttributes =
     PgUdtAttributes(
@@ -132,7 +147,7 @@ object PgUdtAttributes {
       isNullable = rs.getString("is_nullable") == "YES",
       dataType = rs.getString("data_type"),
       attributeUdtSchema = rs.getString("attribute_udt_schema"),
-      attributeUdtName = rs.getString("attribute_udt_name")
+      attributeUdtName = rs.getString("attribute_udt_name"),
     )
 
   val sql: String =
@@ -142,7 +157,11 @@ object PgUdtAttributes {
 
 }
 
-case class PgEnums(enumSchema: String, enumName: String, enumValues: List[String])
+case class PgEnums(
+    enumSchema: String,
+    enumName: String,
+    enumValues: List[String],
+)
 object PgEnums {
   val sql: String =
     """select n.nspname as enum_schema,
@@ -155,13 +174,12 @@ object PgEnums {
 
   def fromResultSet(rs: ResultSet): PgEnums = {
     val enumValues =
-      rs.getArray("enum_values")
-        .getArray.asInstanceOf[Array[String]]
+      rs.getArray("enum_values").getArray.asInstanceOf[Array[String]]
 
     PgEnums(
       rs.getString("enum_schema"),
       rs.getString("enum_name"),
-      enumValues.toList
+      enumValues.toList,
     )
   }
 

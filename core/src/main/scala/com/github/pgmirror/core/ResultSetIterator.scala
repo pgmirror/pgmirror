@@ -3,14 +3,14 @@ package com.github.pgmirror.core
 import java.sql.ResultSet
 
 /**
- * A wrapper around ResultSet that makes it look like an Iterator[ResultSet]
- * Makes iterating and extracting values easier.
- *
- * @param rs The wrapped ResultSet
- */
+  * A wrapper around ResultSet that makes it look like an Iterator[ResultSet]
+  * Makes iterating and extracting values easier.
+  *
+  * @param rs The wrapped ResultSet
+  */
 class ResultSetIterator(val rs: ResultSet) extends Iterator[ResultSet] {
   private[this] var rowWasConsumed: Boolean = true
-  private[this] var _hasNext: Boolean = false
+  private[this] var _hasNext: Boolean       = false
 
   override def hasNext: Boolean = synchronized {
     if (rs.isClosed) false
