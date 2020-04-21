@@ -38,7 +38,7 @@ object ColumnAnnotation {
     Find,
     FindOne,
     NotNull,
-    Versioning
+    Versioning,
   )
 
   val filterValues: Set[ColumnAnnotation] = Set(
@@ -46,7 +46,7 @@ object ColumnAnnotation {
     FilterGt,
     FilterLt,
     FilterGtEq,
-    FilterLtEq
+    FilterLtEq,
   )
 
   def findAllFor(in: PgColumn): List[ColumnAnnotation] =
@@ -70,7 +70,7 @@ object TableAnnotation {
     Lookup,
     Event,
     VersionCheck,
-    History
+    History,
   )
 
   def findAllFor(in: PgTable): List[TableAnnotation] =
@@ -89,7 +89,7 @@ case class TableLike(
   isView: Boolean = false,
   viewIsUpdatable: Boolean = false,
   isInsertable: Boolean = false,
-  annotations: List[TableAnnotation] = Nil
+  annotations: List[TableAnnotation] = Nil,
 ) {
   def tableWithSchema: String =
     List(schemaName, s""""$name"""").filterNot(_.isEmpty).mkString(".")
@@ -107,7 +107,7 @@ case class Column(
   ordinalPosition: Int,
   comment: Option[String],
   annotations: List[ColumnAnnotation] = Nil,
-  hasDefault: Boolean
+  hasDefault: Boolean,
 ) {
 
   def propType: String = {
@@ -155,12 +155,12 @@ case class ForeignKey(
   table: TableLike,
   column: Column,
   foreignTable: TableLike,
-  foreignColumn: Column
+  foreignColumn: Column,
 )
 
 case class Database(
   tables: List[TableLike],
   views: List[TableLike],
   udts: List[TableLike],
-  foreignKeys: List[ForeignKey]
+  foreignKeys: List[ForeignKey],
 )

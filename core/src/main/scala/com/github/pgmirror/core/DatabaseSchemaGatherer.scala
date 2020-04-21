@@ -12,7 +12,7 @@ import com.github.pgmirror.core.model.generator.{
   TableAnnotation,
   TableLike,
   Udt,
-  View
+  View,
 }
 import com.github.pgmirror.core.ResultSetIterator._
 
@@ -41,14 +41,14 @@ class DatabaseSchemaGatherer(settings: Settings) {
 
   private def columnIsNullable(
     pgc: PgColumn,
-    annotations: List[ColumnAnnotation]
+    annotations: List[ColumnAnnotation],
   ) = {
     pgc.isNullable && !annotations.contains(ColumnAnnotation.NotNull)
   }
 
   private def extractTablesAndViews(
     pgTables: List[PgTable],
-    goodColumns: List[Column]
+    goodColumns: List[Column],
   ) = {
     pgTables.map { pgt =>
       val tableSchema = schemaOrEmpty(pgt.tableSchema)
@@ -65,21 +65,20 @@ class DatabaseSchemaGatherer(settings: Settings) {
           .filterNot(_.isEmpty)
           .map(_.capitalize)
           .mkString,
-        columns = goodColumns.filter(c =>
-          c.tableSchema == tableSchema && c.tableName == pgt.tableName
-        ),
+        columns =
+          goodColumns.filter(c => c.tableSchema == tableSchema && c.tableName == pgt.tableName),
         comment = pgt.description.filterNot(_.isEmpty),
         foreignKeys = List(),
         annotations = TableAnnotation.findAllFor(pgt),
         isView = pgt.tableType == "VIEW",
-        isInsertable = pgt.tableType == "BASE TABLE"
+        isInsertable = pgt.tableType == "BASE TABLE",
       )
     }
   }
 
   private def runStatement[R](
     ps: PreparedStatement,
-    tr: ResultSet => R
+    tr: ResultSet => R,
   ): List[R] = {
     val list = ps.executeQuery().toIterator.map(tr).toList
     ps.close()
@@ -88,15 +87,15 @@ class DatabaseSchemaGatherer(settings: Settings) {
 
   private def getPgColumns(
     detectedSchemas: Set[String],
-    detectedTables: Set[String]
+    detectedTables: Set[String],
   ) = {
     val pgColumns = runStatement(
       database.prepareStatement(PgColumn.sql),
-      PgColumn.fromResultSet
+      PgColumn.fromResultSet,
     ).filter(t =>
       detectedSchemas.contains(t.tableSchema) && detectedTables.contains(
-        t.tableName
-      )
+        t.tableName,
+      ),
     )
     pgColumns
   }
@@ -113,10 +112,10 @@ class DatabaseSchemaGatherer(settings: Settings) {
     } else {
       runStatement(
         database.prepareStatement(PgTable.sql),
-        PgTable.fromResultSet
+        PgTable.fromResultSet,
       ).filter(t =>
         settings.schemaFilter.matcher(t.tableSchema).matches() &&
-          settings.tableFilter.matcher(t.tableName).matches()
+          settings.tableFilter.matcher(t.tableName).matches(),
       )
     }
   }
@@ -125,7 +124,7 @@ class DatabaseSchemaGatherer(settings: Settings) {
     val pgForeignKeys =
       runStatement(
         database.prepareStatement(PgForeignKey.sql),
-        PgForeignKey.fromResultSet
+        PgForeignKey.fromResultSet,
       ).filter(f => settings.schemaFilter.matcher(f.tableSchema).matches())
     pgForeignKeys
   }
@@ -159,7 +158,7 @@ class DatabaseSchemaGatherer(settings: Settings) {
             ordinalPosition = pgc.ordinalPosition,
             comment = pgc.description.filterNot(_.isEmpty),
             annotations = annotations,
-            hasDefault = !pgc.columnDefault.isBlank
+            hasDefault = !pgc.columnDefault.isBlank,
           )
         }
     }
@@ -184,14 +183,13 @@ class DatabaseSchemaGatherer(settings: Settings) {
         for {
           table <- findTable(tables, fkTableSchema, fk.tableName)
           col <- findCol(table, fk.columnName)
-          foreignTable <-
-            findTable(tables, fkForeignTableSchema, fk.foreignTableName)
+          foreignTable <- findTable(tables, fkForeignTableSchema, fk.foreignTableName)
           foreignCol <- findCol(foreignTable, fk.foreignColumnName)
         } yield ForeignKey(
           table,
           col,
           foreignTable,
-          foreignCol
+          foreignCol,
         )
       }
 

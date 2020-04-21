@@ -10,7 +10,7 @@ case class PgForeignKey(
   columnName: String,
   foreignTableSchema: String,
   foreignTableName: String,
-  foreignColumnName: String
+  foreignColumnName: String,
 )
 object PgForeignKey {
   def fromResultSet(rs: ResultSet): PgForeignKey = {
@@ -22,7 +22,7 @@ object PgForeignKey {
       columnName = rs.getString("column_name"),
       foreignTableSchema = rs.getString("foreign_table_schema"),
       foreignTableName = rs.getString("foreign_table_name"),
-      foreignColumnName = rs.getString("foreign_column_name")
+      foreignColumnName = rs.getString("foreign_column_name"),
     )
   }
 
@@ -56,7 +56,7 @@ case class PgTable(
   tableName: String,
   tableType: String,
   isInsertableInto: Boolean,
-  description: Option[String]
+  description: Option[String],
 )
 object PgTable {
   def fromResultSet(rs: ResultSet): PgTable =
@@ -65,7 +65,7 @@ object PgTable {
       tableName = rs.getString("table_name"),
       tableType = rs.getString("table_type"),
       isInsertableInto = rs.getString("is_insertable_into") == "YES",
-      description = Option(rs.getString("table_description"))
+      description = Option(rs.getString("table_description")),
     )
 
   val sql: String =
@@ -92,7 +92,7 @@ case class PgColumn(
   dataType: String,
   udtSchema: String,
   udtName: String,
-  description: Option[String]
+  description: Option[String],
 )
 object PgColumn {
   def fromResultSet(rs: ResultSet): PgColumn =
@@ -107,7 +107,7 @@ object PgColumn {
       udtSchema = rs.getString("udt_schema"),
       udtName = rs.getString("udt_name"),
       isPrimaryKey = rs.getBoolean("is_primary"),
-      description = Option(rs.getString("column_description"))
+      description = Option(rs.getString("column_description")),
     )
 
   val sql: String =
@@ -135,7 +135,7 @@ case class PgUdtAttribute(
   isNullable: Boolean,
   dataType: String,
   attributeUdtSchema: String,
-  attributeUdtName: String
+  attributeUdtName: String,
 )
 object PgUdtAttribute {
   def fromResultSet(rs: ResultSet): PgUdtAttribute =
@@ -147,7 +147,7 @@ object PgUdtAttribute {
       isNullable = rs.getString("is_nullable") == "YES",
       dataType = rs.getString("data_type"),
       attributeUdtSchema = rs.getString("attribute_udt_schema"),
-      attributeUdtName = rs.getString("attribute_udt_name")
+      attributeUdtName = rs.getString("attribute_udt_name"),
     )
 
   val sql: String =
@@ -160,7 +160,7 @@ object PgUdtAttribute {
 case class PgEnum(
   enumSchema: String,
   enumName: String,
-  enumValues: List[String]
+  enumValues: List[String],
 )
 object PgEnum {
   val sql: String =
@@ -179,7 +179,7 @@ object PgEnum {
     PgEnum(
       rs.getString("enum_schema"),
       rs.getString("enum_name"),
-      enumValues.toList
+      enumValues.toList,
     )
   }
 

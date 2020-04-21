@@ -6,9 +6,9 @@ import better.files.File
 import com.github.pgmirror.core.model.generator.{ForeignKey, TableLike}
 
 case class GeneratedFile(
-    relativePath: String,
-    filename: String,
-    content: String
+  relativePath: String,
+  filename: String,
+  content: String,
 )
 
 abstract class Generator(settings: Settings) {
@@ -21,11 +21,11 @@ abstract class Generator(settings: Settings) {
     (for {
       database <- new DatabaseSchemaGatherer(settings).gatherDatabase
       file <- Right(
-               generateForAllTables(
-                 database.tables ++ database.views,
-                 database.foreignKeys
-               )
-             )
+        generateForAllTables(
+          database.tables ++ database.views,
+          database.foreignKeys,
+        ),
+      )
     } yield file) match {
       case Left(errors) =>
         errors.foreach(println)
@@ -43,9 +43,9 @@ abstract class Generator(settings: Settings) {
     * @param tables List of all table-like objects (tables and views).
     * @param foreignKeys List of all foreign keys in the schema.
     */
-  private final def generateForAllTables(
-      tables: List[TableLike],
-      foreignKeys: List[ForeignKey]
+  final private def generateForAllTables(
+    tables: List[TableLike],
+    foreignKeys: List[ForeignKey],
   ): Seq[File] = {
     import settings._
 
@@ -57,7 +57,7 @@ abstract class Generator(settings: Settings) {
     rootOutputDir.createDirectories()
 
     val allTableFiles = tables.flatMap(generateForTable(_, foreignKeys))
-    val utilFile      = generateUtil.toList
+    val utilFile = generateUtil.toList
 
     (allTableFiles ++ utilFile).map { ts =>
       val fileOutputDir = rootOutputDir / ts.relativePath
@@ -77,8 +77,8 @@ abstract class Generator(settings: Settings) {
     * @return List of GeneratedFile containing the path and contents for each file.
     */
   def generateForTable(
-      table: TableLike,
-      foreignKeys: List[ForeignKey]
+    table: TableLike,
+    foreignKeys: List[ForeignKey],
   ): List[GeneratedFile]
 
   /**

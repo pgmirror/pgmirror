@@ -9,10 +9,10 @@ some code for you:
 
 # Usage
 
-Currently Pgmirror is just a library meant to be used as an "engine" for various build tool tasks. Initial goal is to
-provide an sbt plugin.  
+Currently, Pgmirror is just a library meant to be used as an "engine" for various build tool tasks. Initial goal is to
+provide a sbt plugin.
 
-Until we make an sbt plugin you can add the below task directly in your `build.sbt`. Check out Sbt documentation on how
+Until we make a sbt plugin you can add the below task directly in your `build.sbt`. Check out Sbt documentation on how
 to integrate it with your build steps. 
 
 The generated code depends on `doobie-core`, `doobie-postgres`, `doobie-postgres-circe`, `circe-core`, `circe-generic` 
@@ -49,7 +49,7 @@ lazy val root = (project in file("."))
         user = "your_db_username",
         password = "your_db_password",
         rootPackage = "com.project.fabulous.your.data",
-        rootPath = ((Compile / unmanagedSourceDirectories).value).head.getAbsolutePath
+        rootPath = (Compile / unmanagedSourceDirectories).value.head.getAbsolutePath
       )
 
       val gen = new DoobieGenerator(settings)
@@ -64,7 +64,7 @@ then start `sbt` shell and run `pgMirror`.
 
 Pgmirror is an exploration in creating a tool with maximum impact that is as simple as possible. The whole codebase 
 currently sits at ~ 1100 lines. It should be understandable to anyone who invests an hour of their time. Current implementation
-does not use many Postgres-specific features but it will in the future, hence the focus on Postgresql. 
+does not use many Postgres-specific features but it will, hence the focus on Postgresql.
 
 The aim is to blend in with your existing development process. That means you get to continue to use your favourite schema
 evolution approach. The only hard requirement is when you generate code you need access to a running Postgresql instance with

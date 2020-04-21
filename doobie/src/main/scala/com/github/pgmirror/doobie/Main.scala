@@ -12,7 +12,7 @@ object Main extends App {
       rootPath = args(3),
       rootPackage = args(4),
       schemas = List("public", "auth"),
-      defaultSchema = ""
-    )
+      defaultSchema = "",
+    ),
   ).generate()
 }
