@@ -63,7 +63,7 @@ then start `sbt` shell and run `pgMirror`.
 # Why? How? What?
 
 Pgmirror is an exploration in creating a tool with maximum impact that is as simple as possible. The whole codebase 
-currently sits at 850 lines. It should be understandable to anyone who invests an hour of their time. Current implementation
+currently sits at ~ 1100 lines. It should be understandable to anyone who invests an hour of their time. Current implementation
 does not use many Postgres-specific features but it will in the future, hence the focus on Postgresql. 
 
 The aim is to blend in with your existing development process. That means you get to continue to use your favourite schema
@@ -97,7 +97,7 @@ name names) make this less of a pain.
 ## Philosophy
 
 To be truly effective you also need to embrace certain patterns in system design. We will pluck ideas from the DDD
-community, CQRS and what ever else when it will contribute to our goal of simple and maintainable project development. 
+community, CQRS and what ever else if it contributes to our goal of simple and maintainable project development.
 
 The generated code should account for majority if not all uses of your presistence layer. There should be no custom SQL
 code in your main source. This is not 100% possible but if you organize your code carefully then using the repository 

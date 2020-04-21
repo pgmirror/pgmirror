@@ -2,7 +2,7 @@ package com.github.pgmirror.core.model.gatherer
 
 import java.sql.ResultSet
 
-case class PgForeignKeys(
+case class PgForeignKey(
   tableSchema: String,
   tableName: String,
   constraintSchema: String,
@@ -12,9 +12,9 @@ case class PgForeignKeys(
   foreignTableName: String,
   foreignColumnName: String
 )
-object PgForeignKeys {
-  def fromResultSet(rs: ResultSet): PgForeignKeys = {
-    PgForeignKeys(
+object PgForeignKey {
+  def fromResultSet(rs: ResultSet): PgForeignKey = {
+    PgForeignKey(
       tableSchema = rs.getString("table_schema"),
       tableName = rs.getString("table_name"),
       constraintSchema = rs.getString("constraint_schema"),
@@ -22,7 +22,7 @@ object PgForeignKeys {
       columnName = rs.getString("column_name"),
       foreignTableSchema = rs.getString("foreign_table_schema"),
       foreignTableName = rs.getString("foreign_table_name"),
-      foreignColumnName = rs.getString("foreign_column_name"),
+      foreignColumnName = rs.getString("foreign_column_name")
     )
   }
 
@@ -51,15 +51,21 @@ object PgForeignKeys {
 
 }
 
-case class PgTables(tableSchema: String, tableName: String, tableType: String, isInsertableInto: Boolean, description: Option[String])
-object PgTables {
-  def fromResultSet(rs: ResultSet): PgTables =
-    PgTables(
+case class PgTable(
+  tableSchema: String,
+  tableName: String,
+  tableType: String,
+  isInsertableInto: Boolean,
+  description: Option[String]
+)
+object PgTable {
+  def fromResultSet(rs: ResultSet): PgTable =
+    PgTable(
       tableSchema = rs.getString("table_schema"),
       tableName = rs.getString("table_name"),
       tableType = rs.getString("table_type"),
       isInsertableInto = rs.getString("is_insertable_into") == "YES",
-      description = Option(rs.getString("table_description")),
+      description = Option(rs.getString("table_description"))
     )
 
   val sql: String =
@@ -75,7 +81,7 @@ object PgTables {
       |order by table_schema,table_name
       |""".stripMargin
 }
-case class PgColumns(
+case class PgColumn(
   tableSchema: String,
   tableName: String,
   columnName: String,
@@ -88,9 +94,9 @@ case class PgColumns(
   udtName: String,
   description: Option[String]
 )
-object PgColumns {
-  def fromResultSet(rs: ResultSet): PgColumns =
-    PgColumns(
+object PgColumn {
+  def fromResultSet(rs: ResultSet): PgColumn =
+    PgColumn(
       tableSchema = rs.getString("table_schema"),
       tableName = rs.getString("table_name"),
       columnName = rs.getString("column_name"),
@@ -121,10 +127,19 @@ object PgColumns {
 
 }
 
-case class PgUdtAttributes(udtSchema: String, udtName: String, attributeName: String, ordinalPosition: Int, isNullable: Boolean, dataType: String, attributeUdtSchema: String, attributeUdtName: String)
-object PgUdtAttributes {
-  def fromResultSet(rs: ResultSet): PgUdtAttributes =
-    PgUdtAttributes(
+case class PgUdtAttribute(
+  udtSchema: String,
+  udtName: String,
+  attributeName: String,
+  ordinalPosition: Int,
+  isNullable: Boolean,
+  dataType: String,
+  attributeUdtSchema: String,
+  attributeUdtName: String
+)
+object PgUdtAttribute {
+  def fromResultSet(rs: ResultSet): PgUdtAttribute =
+    PgUdtAttribute(
       udtSchema = rs.getString("udt_schema"),
       udtName = rs.getString("udt_name"),
       attributeName = rs.getString("attribute_name"),
@@ -142,8 +157,12 @@ object PgUdtAttributes {
 
 }
 
-case class PgEnums(enumSchema: String, enumName: String, enumValues: List[String])
-object PgEnums {
+case class PgEnum(
+  enumSchema: String,
+  enumName: String,
+  enumValues: List[String]
+)
+object PgEnum {
   val sql: String =
     """select n.nspname as enum_schema,
       |       t.typname as enum_name,
@@ -153,12 +172,11 @@ object PgEnums {
       |   join pg_catalog.pg_namespace n ON n.oid = t.typnamespace
       |group by n.nspname, t.typname""".stripMargin
 
-  def fromResultSet(rs: ResultSet): PgEnums = {
+  def fromResultSet(rs: ResultSet): PgEnum = {
     val enumValues =
-      rs.getArray("enum_values")
-        .getArray.asInstanceOf[Array[String]]
+      rs.getArray("enum_values").getArray.asInstanceOf[Array[String]]
 
-    PgEnums(
+    PgEnum(
       rs.getString("enum_schema"),
       rs.getString("enum_name"),
       enumValues.toList

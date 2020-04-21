@@ -51,6 +51,36 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
     case t                => throw new UnsupportedOperationException(s"Unsupported primary key type: $t")
   }
 
+  private def repositoryImports(t: TableLike): String = {
+    val columnTypes = t.columns.map(_.propType).toSet
+
+    val sb =
+      new StringBuilder()
+      .append("import doobie._\n")
+      .append("|import doobie.implicits._\n")
+
+    if (   columnTypes.contains("java.util.UUID")
+        || columnTypes.contains("Option[java.util.UUID]")) {
+      sb.append("|import doobie.postgres.implicits._\n")
+    }
+
+    if (  columnTypes.contains("java.time.Instant")
+       || columnTypes.contains("Option[java.time.Instant]")
+       || columnTypes.contains("java.time.LocalDate")
+       || columnTypes.contains("Option[java.time.LocalDate]")
+       || columnTypes.contains("java.time.LocalTime")
+       || columnTypes.contains("Option[java.time.LocalTime]")
+    ) {
+      sb.append("|import doobie.implicits.javatime._\n")
+    }
+
+    if (columnTypes.contains("io.circe.Json") || columnTypes.contains("Option[io.circe.Json]")) {
+      sb.append("|import doobie.postgres.circe.jsonb.implicits._\n")
+    }
+
+    sb.mkString
+  }
+
   private def generateTableClass(settings: Settings, table: TableLike): String = {
 
     def columnWithDefault(column: Column) =
@@ -202,14 +232,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
 
     s"""package ${tablePackage(settings.rootPackage, table.schemaName)}.repository
        |
-       |import doobie._
-       |import doobie.implicits._
-       |import doobie.implicits.javatime._
-       |import doobie.postgres.implicits._
-       |import doobie.postgres.circe.jsonb.implicits._
-       |
-       |import java.util.UUID
-       |import java.time.Instant
+       |${repositoryImports(table)}
        |
        |import ${tablePackage(settings.rootPackage, table.schemaName)}.${table.className}
        |import ${settings.rootPackage}.repository.DoobieRepository
@@ -290,14 +313,8 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
 
     s"""package ${tablePackage(settings.rootPackage, view.schemaName)}.repository
        |
-       |import doobie._
-       |import doobie.implicits._
-       |import doobie.postgres.implicits._
-       |import doobie.postgres.circe.jsonb.implicits._
-       |import Fragments.{ in, whereAndOpt }
-       |
-       |import java.util.UUID
-       |import java.time.Instant
+       |${repositoryImports(view)}
+       |import Fragments.whereAndOpt
        |
        |import ${tablePackage(settings.rootPackage, view.schemaName)}.${view.className}
        |
