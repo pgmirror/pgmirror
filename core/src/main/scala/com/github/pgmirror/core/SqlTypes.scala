@@ -1,5 +1,7 @@
 package com.github.pgmirror.core
 
+import scala.util.Try
+
 object SqlTypes {
 
   case class ResolvedType(modelType: String, udt: Boolean = false)
@@ -31,75 +33,72 @@ object SqlTypes {
     pgType: String,
     pgDataType: String,
   ): Either[Throwable, ResolvedType] =
-    (pgSchema, pgType, pgDataType) match {
-      case (_, _, "bigint")                      => Right(longType)
-      case (_, _, "int8")                        => Right(longType)
-      case (_, _, "bigserial")                   => Right(longType)
-      case (_, _, "boolean")                     => Right(boolType)
-      case (_, _, "bool")                        => Right(boolType)
-      case (_, _, "integer")                     => Right(intType)
-      case (_, _, "int")                         => Right(intType)
-      case (_, _, "int4")                        => Right(intType)
-      case (_, _, "smallint")                    => Right(intType)
-      case (_, _, "int2")                        => Right(intType)
-      case (_, _, "smallserial")                 => Right(intType)
-      case (_, _, "serial")                      => Right(intType)
-      case (_, _, "double precision")            => Right(doubleType)
-      case (_, _, "float8")                      => Right(doubleType)
-      case (_, _, "real")                        => Right(floatType)
-      case (_, _, "float4")                      => Right(floatType)
-      case (_, _, "money")                       => Right(decimalType)
-      case (_, _, "numeric")                     => Right(decimalType)
-      case (_, _, "bytea")                       => Right(byteArrayType)
-      case (_, _, "character")                   => Right(stringType)
-      case (_, _, "character varying")           => Right(stringType)
-      case (_, _, "varchar")                     => Right(stringType)
-      case (_, _, "text")                        => Right(stringType)
-      case (_, _, "date")                        => Right(localDateType)
-      case (_, _, "time")                        => Right(localTimeType)
-      case (_, _, "timetz")                      => Right(localTimeType)
-      case (_, _, "time with time zone")         => Right(localTimeType)
-      case (_, _, "timestamp")                   => Right(instantType)
-      case (_, _, "timestamptz")                 => Right(instantType)
-      case (_, _, "timestamp with time zone")    => Right(instantType)
-      case (_, _, "timestamp without time zone") => Right(instantType)
-      case (_, _, "uuid")                        => Right(uuidType)
-      case (_, _, "json")                        => Right(jsonType)
-      case (_, _, "jsonb")                       => Right(jsonType)
-      case ("pg_catalog", pgt, "ARRAY") =>
-        typeMapping(
-          packagePrefix,
-          "",
-          "",
-          pgt.replaceFirst("_", ""),
-        ).map(t => ResolvedType(s"Array[${t.modelType}]", t.udt))
+    Try {
+      (pgSchema, pgType, pgDataType) match {
+        case (_, _, "bigint")                      => longType
+        case (_, _, "int8")                        => longType
+        case (_, _, "bigserial")                   => longType
+        case (_, _, "boolean")                     => boolType
+        case (_, _, "bool")                        => boolType
+        case (_, _, "integer")                     => intType
+        case (_, _, "int")                         => intType
+        case (_, _, "int4")                        => intType
+        case (_, _, "smallint")                    => intType
+        case (_, _, "int2")                        => intType
+        case (_, _, "smallserial")                 => intType
+        case (_, _, "serial")                      => intType
+        case (_, _, "double precision")            => doubleType
+        case (_, _, "float8")                      => doubleType
+        case (_, _, "real")                        => floatType
+        case (_, _, "float4")                      => floatType
+        case (_, _, "money")                       => decimalType
+        case (_, _, "numeric")                     => decimalType
+        case (_, _, "bytea")                       => byteArrayType
+        case (_, _, "character")                   => stringType
+        case (_, _, "character varying")           => stringType
+        case (_, _, "varchar")                     => stringType
+        case (_, _, "text")                        => stringType
+        case (_, _, "date")                        => localDateType
+        case (_, _, "time")                        => localTimeType
+        case (_, _, "timetz")                      => localTimeType
+        case (_, _, "time with time zone")         => localTimeType
+        case (_, _, "timestamp")                   => instantType
+        case (_, _, "timestamptz")                 => instantType
+        case (_, _, "timestamp with time zone")    => instantType
+        case (_, _, "timestamp without time zone") => instantType
+        case (_, _, "uuid")                        => uuidType
+        case (_, _, "json")                        => jsonType
+        case (_, _, "jsonb")                       => jsonType
+        case ("pg_catalog", pgt, "ARRAY") =>
+          typeMapping(
+            packagePrefix,
+            "",
+            "",
+            pgt.replaceFirst("_", ""),
+          ) match {
+            case Left(err)  => throw err
+            case Right(tpe) => ResolvedType(s"Array[${tpe.modelType}]", tpe.udt)
+          }
 
-      case (pgs, pgt, "ARRAY") =>
-        val underlying: String = camelCaseize(pgt.replaceFirst("_", ""))
-        val modelType = s"Array[${finalType(packagePrefix, pgs, underlying)}]"
+        case (pgs, pgt, "ARRAY") =>
+          val underlying: String = Names.camelCaseize(pgt.replaceFirst("_", ""))
+          val modelType = s"Array[${finalType(packagePrefix, pgs, underlying)}]"
 
-        Right(ResolvedType(modelType, udt = true))
+          ResolvedType(modelType, udt = true)
 
-      case (pgs, pgt, "USER-DEFINED") =>
-        val underlying: String = camelCaseize(pgt)
-        val modelType: String = finalType(packagePrefix, pgs, underlying)
+        case (pgs, pgt, "USER-DEFINED") =>
+          val underlying: String = Names.camelCaseize(pgt)
+          val modelType: String = finalType(packagePrefix, pgs, underlying)
 
-        Right(ResolvedType(modelType, udt = true))
+          ResolvedType(modelType, udt = true)
 
-      case (_, _, _) =>
-        Left(
-          new Exception(
+        case (_, _, _) =>
+          throw new Exception(
             s"Mapping for ($pgSchema, $pgType, $pgDataType) not found!",
-          ),
-        )
-    }
+          )
 
-  private def camelCaseize(pgt: String): String =
-    pgt
-      .split("_")
-      .filterNot(_.isEmpty)
-      .map(_.capitalize)
-      .mkString
+      }
+    }.toEither
 
   private def finalType(
     packagePrefix: String,
@@ -108,7 +107,7 @@ object SqlTypes {
   ): String = {
     val underlyingPackage = pgs
     val finalType = if (underlyingPackage.isEmpty) {
-      s"$packagePrefix.${underlying}"
+      s"$packagePrefix.$underlying"
     } else {
       s"$packagePrefix.$underlyingPackage.$underlying"
     }
