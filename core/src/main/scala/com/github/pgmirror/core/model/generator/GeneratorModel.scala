@@ -4,14 +4,6 @@ import com.github.pgmirror.core.model.gatherer.{PgColumn, PgTable}
 
 import scala.util.matching.Regex
 
-sealed trait TableType
-
-case object Table extends TableType
-
-case object View extends TableType
-
-case object Udt extends TableType
-
 sealed abstract class Annotation(val regex: Regex)
 
 sealed abstract class ColumnAnnotation(override val regex: Regex) extends Annotation(regex)
@@ -79,21 +71,23 @@ object TableAnnotation {
 }
 
 case class TableLike(
-  tableType: TableType,
   schemaName: String,
   name: String,
   className: String,
   columns: List[Column],
   comment: Option[String],
   foreignKeys: List[ForeignKey] = List(),
-  isView: Boolean = false,
-  viewIsUpdatable: Boolean = false,
+  isUpdatable: Boolean = false,
   isInsertable: Boolean = false,
   annotations: List[TableAnnotation] = Nil,
 ) {
-  def tableWithSchema: String =
+  def nameWithSchema: String =
     List(schemaName, s""""$name"""").filterNot(_.isEmpty).mkString(".")
 }
+
+case class Table(value: TableLike) extends AnyVal
+case class View(value: TableLike)  extends AnyVal
+case class Udt(value: TableLike)   extends AnyVal
 
 case class Column(
   tableSchema: String,
@@ -152,15 +146,15 @@ case class Column(
 }
 
 case class ForeignKey(
-  table: TableLike,
+  table: Table,
   column: Column,
-  foreignTable: TableLike,
+  foreignTable: Table,
   foreignColumn: Column,
 )
 
 case class Database(
-  tables: List[TableLike],
-  views: List[TableLike],
-  udts: List[TableLike],
+  tables: List[Table],
+  views: List[View],
+  udts: List[Udt],
   foreignKeys: List[ForeignKey],
 )

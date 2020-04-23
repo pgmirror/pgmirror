@@ -113,12 +113,8 @@ class DatabaseSchemaGatherer(settings: Settings) {
   }
 
   private def extractIntoDatabase(pgTables: List[PgTable], allColumns: List[Column]) = {
-    val tablesAndViews =
+    val (tables, views, udts) =
       extractTablesAndViews(pgTables, allColumns)
-
-    val tables = tablesAndViews.filter(_.tableType == Table)
-    val views = tablesAndViews.filter(_.tableType == View)
-    val udts = tablesAndViews.filter(_.tableType == Udt)
 
     val tableFKs = extractForeignKeys(tables)
 
@@ -128,15 +124,11 @@ class DatabaseSchemaGatherer(settings: Settings) {
   private def extractTablesAndViews(
     pgTables: List[PgTable],
     goodColumns: List[Column],
-  ) = {
-    pgTables.map { pgt =>
+  ): (List[Table], List[View], List[Udt]) = {
+    pgTables.foldRight((List[Table](), List[View](), List[Udt]())) { (pgt, r) =>
       val tableSchema = schemaOrEmpty(pgt.tableSchema)
 
-      TableLike(
-        tableType =
-          if (pgt.tableType == "BASE TABLE") Table
-          else if (pgt.tableType == "VIEW") View
-          else Udt,
+      val t = TableLike(
         schemaName = tableSchema,
         name = pgt.tableName,
         className = Names.camelCaseize(pgt.tableName),
@@ -145,13 +137,20 @@ class DatabaseSchemaGatherer(settings: Settings) {
         comment = pgt.description.filterNot(_.isEmpty),
         foreignKeys = List(),
         annotations = TableAnnotation.findAllFor(pgt),
-        isView = pgt.tableType == "VIEW",
         isInsertable = pgt.tableType == "BASE TABLE",
       )
+
+      if (pgt.tableType == "BASE TABLE") {
+        (Table(t) +: r._1, r._2, r._3)
+      } else if (pgt.tableType == "VIEW") {
+        (r._1, View(t) +: r._2, r._3)
+      } else {
+        (r._1, r._2, Udt(t) +: r._3)
+      }
     }
   }
 
-  private def extractForeignKeys(tables: List[TableLike]) = {
+  private def extractForeignKeys(tables: List[Table]) = {
     runStatement(
       database.prepareStatement(PgForeignKey.sql),
       PgForeignKey.fromResultSet,
@@ -173,12 +172,12 @@ class DatabaseSchemaGatherer(settings: Settings) {
     }
   }
 
-  private def findTable(tables: List[TableLike], schema: String, name: String) =
+  private def findTable(tables: List[Table], schema: String, name: String) =
     tables
-      .find(t => t.schemaName == schema && t.name == name)
+      .find(t => t.value.schemaName == schema && t.value.name == name)
 
-  private def findCol(table: TableLike, name: String) =
-    table.columns.find(_.name == name)
+  private def findCol(table: Table, name: String) =
+    table.value.columns.find(_.name == name)
 
   private def runStatement[R](
     ps: PreparedStatement,

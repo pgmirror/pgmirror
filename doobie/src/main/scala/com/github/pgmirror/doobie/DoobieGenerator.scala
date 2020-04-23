@@ -2,120 +2,90 @@ package com.github.pgmirror.doobie
 
 import com.github.pgmirror.core.model.generator.ColumnAnnotation._
 import com.github.pgmirror.core.model.generator.TableAnnotation._
-import com.github.pgmirror.core.model.generator.{Column, ColumnAnnotation, ForeignKey, TableLike}
+import com.github.pgmirror.core.model.generator.{
+  Column,
+  ColumnAnnotation,
+  ForeignKey,
+  Table,
+  TableLike,
+  View,
+}
 import com.github.pgmirror.core.{GeneratedFile, Generator, Settings}
 
 class DoobieGenerator(settings: Settings) extends Generator(settings) {
+
+  private val tq = "\"\"\""
 
   override def generateUtil: Option[GeneratedFile] =
     Some {
       GeneratedFile("repository", "DoobieRepository.scala", generateBaseRepository())
     }
 
+  private def generateBaseRepository(): String =
+    s"""package ${settings.rootPackage}.repository
+      |
+      |import doobie._
+      |import io.circe.{Decoder, Encoder}
+      |import doobie.Read
+      |
+      |
+      |abstract class DoobieRepository[E: Read : Encoder: Decoder, PK] {
+      |  def tableColumns: List[String]
+      |  val hasDefault: List[E => Boolean]
+      |
+      |  protected def columnsToInsert(item: E): List[String] =
+      |    tableColumns
+      |      .zip(hasDefault)
+      |      .filterNot{ case (_, p) => p(item)}
+      |      .map{ case (col, _) => col}
+      |
+      |  def insertSql(item: E): Fragment
+      |  def insertAllSql(item: E): Fragment
+      |  def getSql(pk: PK): Fragment
+      |  def deleteSql(pk: PK): Fragment
+      |  def updateSql(item: E): Fragment
+      |
+      |  def insertQuery(item: E): Query0[E] = insertSql(item).query[E]
+      |  def insertAllQuery(item: E): Query0[E] = insertAllSql(item).query[E]
+      |  def getQuery(pk: PK): Query0[E] = getSql(pk).query[E]
+      |  def deleteQuery(pk: PK): Query0[E] = deleteSql(pk).query[E]
+      |  def updateQuery(item: E): Query0[E] = updateSql(item).query[E]
+      |
+      |  def insert(item: E): ConnectionIO[E] =
+      |    insertQuery(item).unique
+      |
+      |  def insertAllValues(item: E): ConnectionIO[E] =
+      |    insertAllQuery(item).unique
+      |
+      |  def get(pk: PK): ConnectionIO[Option[E]] =
+      |    getQuery(pk).option
+      |
+      |  def delete(pk: PK): ConnectionIO[Option[E]] =
+      |    deleteQuery(pk).option
+      |
+      |  def update(item: E): ConnectionIO[Option[E]] =
+      |    updateQuery(item).option
+      |}
+      |""".stripMargin
+
   override def generateForTable(
-    table: TableLike,
+    table: Table,
     foreignKeys: List[ForeignKey],
   ): List[GeneratedFile] = {
-    System.out.println(s"Processing: ${table.tableWithSchema}")
-    val repositoryPath = Seq(table.schemaName, "repository").filterNot(_.isEmpty).mkString("/")
-    val modelPath = Seq(table.schemaName).filterNot(_.isEmpty).mkString("/")
+    System.out.println(s"Processing table: ${table.value.nameWithSchema}")
+    val (repositoryPath: String, modelPath: String) = paths(table.value)
 
     val repository: String =
-      if (table.isView)
-        generateViewRepository(settings, table)
-      else
-        generateTableRepository(settings, table)
+      generateTableRepository(settings, table.value)
 
     List(
-      GeneratedFile(modelPath, table.className + ".scala", generateTableClass(settings, table)),
-      GeneratedFile(repositoryPath, table.className + "Repository.scala", repository),
+      GeneratedFile(
+        modelPath,
+        table.value.className + ".scala",
+        generateDataClass(settings, table.value),
+      ),
+      GeneratedFile(repositoryPath, table.value.className + "Repository.scala", repository),
     )
-  }
-
-  private val tq = "\"\"\""
-
-  private def tablePackage(rootPackage: String, schemaName: String): String =
-    List(rootPackage, schemaName).filterNot(_.isEmpty).mkString(".")
-
-  private def columnDefault(p: String) =
-    p match {
-      case "Int"                       => "Int.MinValue"
-      case "Long"                      => "Long.MinValue"
-      case "Float"                     => "Float.NaN"
-      case "Double"                    => "Double.NaN"
-      case "BigDecimal"                => "BigDecimal(0)"
-      case "Boolean"                   => "false"
-      case "Array[Byte]"               => "Array[Byte]()"
-      case "String"                    => "\"\""
-      case "java.util.UUID"            => "new java.util.UUID(0,0)"
-      case "java.time.LocalDate"       => "java.time.LocalDate.MIN"
-      case "java.time.LocalTime"       => "java.time.LocalTime.MIN"
-      case "java.time.Instant"         => "java.time.Instant.MIN"
-      case "java.time.LocalDateTime"   => "java.time.LocalDateTime.MIN"
-      case t if t.startsWith("Array[") => s"$t()"
-      case t                           => throw new UnsupportedOperationException(s"Unsupported primary key type: $t")
-    }
-
-  private def repositoryImports(t: TableLike): String = {
-    val columnTypes = t.columns.map(_.propType).toSet
-
-    val sb =
-      new StringBuilder()
-        .append("import doobie._\n")
-        .append("|import doobie.implicits._\n")
-
-    if (columnTypes.contains("java.util.UUID")
-        || columnTypes.contains("Option[java.util.UUID]")) {
-      sb.append("|import doobie.postgres.implicits._\n")
-    }
-
-    if (columnTypes.contains("java.time.Instant")
-        || columnTypes.contains("Option[java.time.Instant]")
-        || columnTypes.contains("java.time.LocalDate")
-        || columnTypes.contains("Option[java.time.LocalDate]")
-        || columnTypes.contains("java.time.LocalTime")
-        || columnTypes.contains("Option[java.time.LocalTime]")) {
-      sb.append("|import doobie.implicits.javatime._\n")
-    }
-
-    if (columnTypes.contains("io.circe.Json") || columnTypes.contains("Option[io.circe.Json]")) {
-      sb.append("|import doobie.postgres.circe.jsonb.implicits._\n")
-    }
-
-    sb.mkString
-  }
-
-  private def generateTableClass(settings: Settings, table: TableLike): String = {
-
-    def columnWithDefault(column: Column) =
-      column.propWithComment + " = " + columnDefault(column.propType)
-
-    val columnList =
-      table.columns
-        .map(c => if (c.hasDefault) columnWithDefault(c) else c.propWithComment)
-        .mkString(",\n  ")
-
-    s"""package ${tablePackage(settings.rootPackage, table.schemaName)}
-       |
-       |import io.circe.{Decoder, Encoder}
-       |import io.circe.generic.extras.semiauto._
-       |import io.circe.generic.extras.Configuration
-       |
-       |case class ${table.className} (
-       |  $columnList
-       |)
-       |
-       |object ${table.className} {
-       |
-       |  implicit val customConfig: Configuration = Configuration.default.withSnakeCaseMemberNames
-       |
-       |  implicit val decode${table.className}: Decoder[${table.className}] = deriveConfiguredDecoder
-       |
-       |  implicit val encode${table.className}: Encoder[${table.className}] = deriveConfiguredEncoder
-       |
-       |}
-       |
-       |""".stripMargin
   }
 
   private def generateTableRepository(settings: Settings, table: TableLike): String = {
@@ -125,7 +95,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
       s"""  override def insertSql(item: ${table.className}): Fragment = {
          |    val insertInto =
          |      Fragment.const(
-         |        columnsToInsert(item).mkString(${tq}insert into ${table.tableWithSchema} (${tq},", ", ") ")
+         |        columnsToInsert(item).mkString(${tq}insert into ${table.nameWithSchema} ($tq,", ", ") ")
          |      )
          |
          |    val values =
@@ -134,13 +104,13 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
          |      )
          |
          |    val subselect =
-         |      fr${tq}from (SELECT (___inner::${table.tableWithSchema}).* from (select ${table.columns
+         |      fr${tq}from (SELECT (___inner::${table.nameWithSchema}).* from (select ${table.columns
            .map(tc => s"$${item.${tc.propName}}")
-           .mkString(",")}) as ___inner) as __outer)${tq}
+           .mkString(",")}) as ___inner) as __outer)$tq
          |
          |    val returning = fr${tq}returning ${table.columns
            .map(_.tableColumn)
-           .mkString(",")}${tq}
+           .mkString(",")}$tq
          |
          |    insertInto ++ values ++ subselect ++ returning
          |  }
@@ -149,7 +119,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
     val insertAllDef =
       s"""  override def insertAllSql(item: ${table.className}): Fragment =
          |    sql$tq
-         |      insert into ${table.tableWithSchema}
+         |      insert into ${table.nameWithSchema}
          |             (${table.columns.map(_.columnNameQuoted).mkString(",\n              ")})
          |             values
          |             (${table.columns
@@ -164,7 +134,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
         s"""  override def getSql(${p.prop}): Fragment =
          |    sql$tq
          |      select ${table.columns.map(_.columnNameQuoted).mkString(",\n             ")}
-         |        from ${table.tableWithSchema}
+         |        from ${table.nameWithSchema}
          |       where ${p.tableColumn} = $$${p.propName}
          |    $tq
          |""".stripMargin
@@ -175,7 +145,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
       s"""  def findBy${c.propName.capitalize}Sql(${c.prop}): Fragment =
          |    sql$tq
          |      select ${table.columns.map(_.columnNameQuoted).mkString(",\n             ")}
-         |        from ${table.tableWithSchema}
+         |        from ${table.nameWithSchema}
          |       where ${c.tableColumn} = $$${c.propName}
          |    $tq
          |
@@ -191,7 +161,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
       s"""  def findOneBy${c.propName.capitalize}Sql(${c.prop}): Fragment =
          |    sql$tq
          |      select ${table.columns.map(_.columnNameQuoted).mkString(",\n             ")}
-         |        from ${table.tableWithSchema}
+         |        from ${table.nameWithSchema}
          |       where ${c.tableColumn} = $$${c.propName}
          |    $tq
          |
@@ -206,7 +176,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
       .map { p =>
         s"""  override def deleteSql(${p.prop}): Fragment =
          |    sql$tq
-         |      delete from ${table.tableWithSchema}
+         |      delete from ${table.nameWithSchema}
          |       where ${p.columnNameQuoted} = $$${p.propName}
          |      returning ${table.columns.map(_.columnNameQuoted).mkString(",\n                ")}
          |    $tq
@@ -218,7 +188,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
       .map { p =>
         s"""  override def updateSql(item: ${table.className}): Fragment =
          |    sql$tq
-         |      update ${table.tableWithSchema}
+         |      update ${table.nameWithSchema}
          |         set ${table.columns
              .filterNot(_.isPrimaryKey)
              .map(tc => s"${tc.columnNameQuoted} = $${item.${tc.propName}}")
@@ -271,6 +241,84 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |
        """.stripMargin
   }
+
+  override def generateForView(
+    view: View,
+  ): List[GeneratedFile] = {
+    System.out.println(s"Processing view: ${view.value.nameWithSchema}")
+    val (repositoryPath: String, modelPath: String) = paths(view.value)
+
+    val repository: String =
+      generateViewRepository(settings, view.value)
+
+    List(
+      GeneratedFile(
+        modelPath,
+        view.value.className + ".scala",
+        generateDataClass(settings, view.value),
+      ),
+      GeneratedFile(repositoryPath, view.value.className + "Repository.scala", repository),
+    )
+  }
+
+  private def paths(table: TableLike) = {
+    val repositoryPath =
+      Seq(table.schemaName, "repository").filterNot(_.isEmpty).mkString("/")
+    val modelPath = Seq(table.schemaName).filterNot(_.isEmpty).mkString("/")
+    (repositoryPath, modelPath)
+  }
+
+  private def generateDataClass(settings: Settings, table: TableLike): String = {
+
+    def columnWithDefault(column: Column) =
+      column.propWithComment + " = " + columnDefault(column.propType)
+
+    val columnList =
+      table.columns
+        .map(c => if (c.hasDefault) columnWithDefault(c) else c.propWithComment)
+        .mkString(",\n  ")
+
+    s"""package ${tablePackage(settings.rootPackage, table.schemaName)}
+       |
+       |import io.circe.{Decoder, Encoder}
+       |import io.circe.generic.extras.semiauto._
+       |import io.circe.generic.extras.Configuration
+       |
+       |case class ${table.className} (
+       |  $columnList
+       |)
+       |
+       |object ${table.className} {
+       |
+       |  implicit val customConfig: Configuration = Configuration.default.withSnakeCaseMemberNames
+       |
+       |  implicit val decode${table.className}: Decoder[${table.className}] = deriveConfiguredDecoder
+       |
+       |  implicit val encode${table.className}: Encoder[${table.className}] = deriveConfiguredEncoder
+       |
+       |}
+       |
+       |""".stripMargin
+  }
+
+  private def columnDefault(p: String) =
+    p match {
+      case "Int"                       => "Int.MinValue"
+      case "Long"                      => "Long.MinValue"
+      case "Float"                     => "Float.NaN"
+      case "Double"                    => "Double.NaN"
+      case "BigDecimal"                => "BigDecimal(0)"
+      case "Boolean"                   => "false"
+      case "Array[Byte]"               => "Array[Byte]()"
+      case "String"                    => "\"\""
+      case "java.util.UUID"            => "new java.util.UUID(0,0)"
+      case "java.time.LocalDate"       => "java.time.LocalDate.MIN"
+      case "java.time.LocalTime"       => "java.time.LocalTime.MIN"
+      case "java.time.Instant"         => "java.time.Instant.MIN"
+      case "java.time.LocalDateTime"   => "java.time.LocalDateTime.MIN"
+      case t if t.startsWith("Array[") => s"$t()"
+      case t                           => throw new UnsupportedOperationException(s"Unsupported primary key type: $t")
+    }
 
   private def generateViewRepository(settings: Settings, view: TableLike): String = {
 
@@ -346,9 +394,9 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |    val selectFr: Fragment =
        |      fr${tq}select ${view.columns
          .map(_.tableColumn)
-         .mkString(",")} from ${view.tableWithSchema}$tq
+         .mkString(",")} from ${view.nameWithSchema}$tq
        |$whereFr$offsetFr$limitFr
-       |    val q: Fragment = selectFr${rWhereFr}${rLimitFr}${rOffsetFr}
+       |    val q: Fragment = selectFr$rWhereFr$rLimitFr$rOffsetFr
        |
        |    q.query[${view.className}]
        |  }
@@ -359,50 +407,35 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |""".stripMargin
   }
 
-  private def generateBaseRepository(): String =
-    s"""package ${settings.rootPackage}.repository
-      |
-      |import doobie._
-      |import io.circe.{Decoder, Encoder}
-      |import doobie.Read
-      |
-      |
-      |abstract class DoobieRepository[E: Read : Encoder: Decoder, PK] {
-      |  def tableColumns: List[String]
-      |  val hasDefault: List[E => Boolean]
-      |
-      |  protected def columnsToInsert(item: E): List[String] =
-      |    tableColumns
-      |      .zip(hasDefault)
-      |      .filterNot{ case (_, p) => p(item)}
-      |      .map{ case (col, _) => col}
-      |
-      |  def insertSql(item: E): Fragment
-      |  def insertAllSql(item: E): Fragment
-      |  def getSql(pk: PK): Fragment
-      |  def deleteSql(pk: PK): Fragment
-      |  def updateSql(item: E): Fragment
-      |
-      |  def insertQuery(item: E): Query0[E] = insertSql(item).query[E]
-      |  def insertAllQuery(item: E): Query0[E] = insertAllSql(item).query[E]
-      |  def getQuery(pk: PK): Query0[E] = getSql(pk).query[E]
-      |  def deleteQuery(pk: PK): Query0[E] = deleteSql(pk).query[E]
-      |  def updateQuery(item: E): Query0[E] = updateSql(item).query[E]
-      |
-      |  def insert(item: E): ConnectionIO[E] =
-      |    insertQuery(item).unique
-      |
-      |  def insertAllValues(item: E): ConnectionIO[E] =
-      |    insertAllQuery(item).unique
-      |
-      |  def get(pk: PK): ConnectionIO[Option[E]] =
-      |    getQuery(pk).option
-      |
-      |  def delete(pk: PK): ConnectionIO[Option[E]] =
-      |    deleteQuery(pk).option
-      |
-      |  def update(item: E): ConnectionIO[Option[E]] =
-      |    updateQuery(item).option
-      |}
-      |""".stripMargin
+  private def tablePackage(rootPackage: String, schemaName: String): String =
+    List(rootPackage, schemaName).filterNot(_.isEmpty).mkString(".")
+
+  private def repositoryImports(t: TableLike): String = {
+    val columnTypes = t.columns.map(_.propType).toSet
+
+    val sb =
+      new StringBuilder()
+        .append("import doobie._\n")
+        .append("|import doobie.implicits._\n")
+
+    if (columnTypes.contains("java.util.UUID")
+        || columnTypes.contains("Option[java.util.UUID]")) {
+      sb.append("|import doobie.postgres.implicits._\n")
+    }
+
+    if (columnTypes.contains("java.time.Instant")
+        || columnTypes.contains("Option[java.time.Instant]")
+        || columnTypes.contains("java.time.LocalDate")
+        || columnTypes.contains("Option[java.time.LocalDate]")
+        || columnTypes.contains("java.time.LocalTime")
+        || columnTypes.contains("Option[java.time.LocalTime]")) {
+      sb.append("|import doobie.implicits.javatime._\n")
+    }
+
+    if (columnTypes.contains("io.circe.Json") || columnTypes.contains("Option[io.circe.Json]")) {
+      sb.append("|import doobie.postgres.circe.jsonb.implicits._\n")
+    }
+
+    sb.mkString
+  }
 }
