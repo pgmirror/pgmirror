@@ -1,5 +1,5 @@
-lazy val scala212 = "2.12.10"
-lazy val scala213 = "2.13.1"
+lazy val scala212 = "2.12.11"
+lazy val scala213 = "2.13.3"
 lazy val supportedScalaVersions = List(scala213, scala212)
 
 ThisBuild / organization := "com.github.pgmirror"
@@ -17,9 +17,8 @@ lazy val core = (project in file("core"))
     crossScalaVersions := supportedScalaVersions,
     name               := "pgmirror-core",
     libraryDependencies ++= Seq(
-      "com.github.pathikrit" %% "better-files" % "3.8.0",
-      "org.postgresql"        % "postgresql"   % "42.2.8",
-      "org.scalatest"        %% "scalatest"    % "3.1.0" % Test
+      "org.postgresql"        % "postgresql"   % "42.2.14",
+      "org.scalatest"        %% "scalatest"    % "3.2.0" % Test
     )
   )
 

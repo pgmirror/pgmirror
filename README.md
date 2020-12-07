@@ -1,7 +1,6 @@
 # About
 
-Pgmirror is a code generator written in Scala that will take your Postgresql database schema and generate 
-some code for you:
+Pgmirror is a code generator for Scala that will take your Postgresql database schema and generate code for you:
 
 - Generate model classes for your domain models.
 - Generate the repositories using the Doobie library.
@@ -13,9 +12,9 @@ Currently, Pgmirror is just a library meant to be used as an "engine" for variou
 provide a sbt plugin.
 
 Until we make a sbt plugin you can add the below task directly in your `build.sbt`. Check out Sbt documentation on how
-to integrate it with your build steps. 
+to integrate it with your build steps.
 
-The generated code depends on `doobie-core`, `doobie-postgres`, `doobie-postgres-circe`, `circe-core`, `circe-generic` 
+The generated code depends on `doobie-core`, `doobie-postgres`, `doobie-postgres-circe`, `circe-core`, `circe-generic`
 and `circe-generic-extras`. There are no hard requirements on Doobie or Circe versions but do use the latest you can
 afford.
 
@@ -23,7 +22,7 @@ afford.
 ```scala
 libraryDependencies += "com.github.pgmirror" %% "pgmirror-doobie" % "0.1.0"
 ```
-(NOTE: this project is not yet published)
+(NOTE: this project is not published yet)
 
 * Sample `build.sbt`
 ```scala
@@ -58,11 +57,11 @@ lazy val root = (project in file("."))
   )
 ```
 
-then start `sbt` shell and run `pgMirror`. 
+then start `sbt` shell and run `pgMirror`.
 
 # Why? How? What?
 
-Pgmirror is an exploration in creating a tool with maximum impact that is as simple as possible. The whole codebase 
+Pgmirror is an exploration in creating a tool with maximum impact that is as simple as possible. The whole codebase
 currently sits at ~ 1100 lines. It should be understandable to anyone who invests an hour of their time. Current implementation
 does not use many Postgres-specific features but it will, hence the focus on Postgresql.
 
@@ -71,9 +70,7 @@ evolution approach. The only hard requirement is when you generate code you need
 your latest schema.
 
 Pgmirror generates Doobie code needed to CRUD your way through typical business database schemas. People accept writing
-those as normal but that is just silly. To make pgmirror a little bit more useful than just a CRUD generator we are
-experimenting with adding annotations to tables and columns in the form of SQL COMMENTs. You would do something 
-like this:
+those as normal but that is just silly. Pgmirror is a bit more useful than a simple CRUD generator: place @ annotations in comments on tables and columns to get additional functionality.
 
 ```sql
 COMMENT ON COLUMN auth."users_list_view".name IS $$
@@ -84,15 +81,12 @@ Users real name.
 $$;
 ```
 
-All comments on tables and columns are copied as comments in Scala code. 
+Any comments you put on tables and columns will be placed into comments in Scala code.
 
 To see which annotations are currently supported just search for the `@` sign in this document. Contributions welcome
 to create a proper reference document.
 
-`COMMENT`s in Postgresql are not very ergonomic but some GUI database management tools (all are commercial so I won't
-name names) make this less of a pain.
-
-
+`COMMENT`s in Postgresql are not very ergonomic but some GUI database management tools make this less of a pain.
 
 ## Philosophy
 
@@ -100,22 +94,26 @@ To be truly effective you also need to embrace certain patterns in system design
 community, CQRS and what ever else if it contributes to our goal of simple and maintainable project development.
 
 The generated code should account for majority if not all uses of your presistence layer. There should be no custom SQL
-code in your main source. This is not 100% possible but if you organize your code carefully then using the repository 
-pattern should account for almost all of your persistence needs.
+code in your application source. This is not 100% possible but if you organize your code carefully then using the
+repository pattern should account for almost all of your persistence needs.
 Use tables for storage (kind of obvious, isn't it!) but all views into the data should be done through SQL views. This
 typically means adopting a kind of CQRS approach where data is changed (created, updated, deleted) via commands whose
-handlers use model repositories to do the modifications. Any kind of view into the data is done through database views. 
+handlers use model repositories to do the modifications. Any kind of view into the data is done through database views.
 The repository code generated for views only allows read and filtered list operations. You can create simple views to
 support entity lists or per-entity edit views. Reports should also be done via views whenever possible. Sometimes we
 want to run periodic jobs that prepare reporting data. This is the only place where it's expected to have custom SQL
-code in your application. 
+code in your application.
+
+Refrain from implementing business logic in the database. Stored procedures and triggers are powerful tools but unless
+you are very carefull they will make your life difficult as your application grows. It is best to limit their use to
+non-business tasks such as database maintenance, etc.
 
 ## Implementation
 
 ### Tables and Views
 
-Any query with complex joins that is known in advance should be defined as a view in the database. The view definition 
-should define a column projection and necessary joins with a minimal set of `WHERE` clauses. 
+Any query with complex joins that is known in advance should be defined as a view in the database. The view definition
+should define a column projection and necessary joins with a minimal set of `WHERE` clauses.
 
 For views we can add column descriptions that contain annotations:
 
@@ -132,31 +130,32 @@ with using `@Limit` and `@Offset` for pagination. There are serious performance 
 than a couple of thousand records in total.
 
 View definitions create new model classes. This means that a view that returns columns identical to a table it selects
-from will yield a different class than the original table. 
+from will yield a different class than the original table.
 
-There are two additional annotations: `@Find` and `@FindOne`. You apply these annotations to table columns only. For 
-every column with these annotations you will get a method `findBy` + `ColumnName` in the table repository. `@Find` returns 
+There are two additional annotations: `@Find` and `@FindOne`. You apply these annotations to table columns only. For
+every column with these annotations you will get a method `findBy` + `ColumnName` in the table repository. `@Find` returns
 a list and `@FindOne` returns an option of the model class and throws if there is more than one result.
 
 Make sure the columns you filter on are properly indexed!
 
-Postgresql reports all view columns as nullable which is unfortunate because the generated model class will have all 
+Postgresql reports all view columns as nullable which is unfortunate because the generated model class will have all
 column types set to `Option[Whatever]`. If you wish to override nullability of a certain column use the `@NotNull`
-annotation on that column. This annotation is also available on table columns. Be careful when you use it. You WILL get 
+annotation on that column. This annotation is also available on table columns. Be careful when you use it. You WILL get
 random exceptions when your expectations do not meet reality.
 
 #### Primary keys and columns with values generated by the database
 
-The only supported table structure is one that has a single primary key. The repositories won't work for tables without
-a PK. 
- 
-If it is detected that a column has a database default, a model class will be generated with a "zero value" as default
-for those columns. If, on `INSERT` only, it is detected that the values are equal to this "zero value" they will be
-omitted from the insert list which allows the database to generate the value from the default.
- 
+**The only supported table structure is one with a single primary key. The repositories won't work for tables without
+a PK or tables that have multiple PKs.**
+
+If pgmirror finds a column (any columnm, not only PKs) with a database default, a model class will be
+generated with a "zero value" as default for those columns. If, on `INSERT` only, it is detected that the
+values are equal to this "zero value" they will be omitted from the insert list which allows the database
+to generate the value using the default.
+
 ### Examples
 
-We will base all examples on this schema: 
+We will base all examples on this schema:
 
 ```sql
 CREATE TABLE auth.users (
@@ -170,8 +169,8 @@ CREATE TABLE auth.users (
 );
 ```
 
-We have a table `auth.users` with a complex user definition and we want a simpler view for 
-display in a list of users. We create a view `users_list_view` for that. 
+We have a table `auth.users` with a complex user definition and we want a simpler view for
+display in a list of users. We create a view `users_list_view` for that.
 
 ```sql
 CREATE OR REPLACE VIEW auth."users_list_view" as (

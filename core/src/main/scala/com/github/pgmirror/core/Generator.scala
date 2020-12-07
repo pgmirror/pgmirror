@@ -1,9 +1,9 @@
 package com.github.pgmirror.core
 
-import java.nio.charset.StandardCharsets
+import java.io.File
+import java.nio.file.Files
 
-import better.files.File
-import com.github.pgmirror.core.model.generator.{ForeignKey, Table, TableLike, View}
+import com.github.pgmirror.core.model.generator.{ForeignKey, Table, View}
 
 case class GeneratedFile(
   relativePath: String,
@@ -52,21 +52,21 @@ abstract class Generator(settings: Settings) {
     import settings._
 
     val rootOutputDir = rootPackage match {
-      case "" => File(rootPath)
-      case _  => File(s"$rootPath/${rootPackage.replace(".", "/")}")
+      case "" => new File(rootPath)
+      case _  => new File(s"$rootPath/${rootPackage.replace(".", "/")}")
     }
 
-    rootOutputDir.createDirectories()
+    rootOutputDir.mkdirs()
 
     val allTableFiles = tables.flatMap(generateForTable(_, foreignKeys))
     val allViewFiles = views.flatMap(generateForView)
     val utilFile = generateUtil.toList
 
     (allTableFiles ++ allViewFiles ++ utilFile).map { ts =>
-      val fileOutputDir = rootOutputDir / ts.relativePath
-      fileOutputDir.createDirectories()
-      val file = fileOutputDir / ts.filename
-      file.write(ts.content)(charset = StandardCharsets.UTF_8)
+      val fileOutputDir = new File(rootOutputDir, ts.relativePath)
+      fileOutputDir.mkdirs()
+      val file = new File(fileOutputDir, ts.filename)
+      Files.writeString(file.toPath, ts.content)
 
       file
     }
