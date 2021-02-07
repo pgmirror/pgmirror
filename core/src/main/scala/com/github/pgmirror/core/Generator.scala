@@ -1,9 +1,9 @@
 package com.github.pgmirror.core
 
+import com.github.pgmirror.core.model.generator.{ForeignKey, Table, View}
+
 import java.io.File
 import java.nio.file.Files
-
-import com.github.pgmirror.core.model.generator.{ForeignKey, Table, View}
 
 case class GeneratedFile(
   relativePath: String,
@@ -14,28 +14,10 @@ case class GeneratedFile(
 abstract class Generator(settings: Settings) {
 
   /**
-    * The base method that runs the whole process of gathering database schema
-    * and running the generators.
+    * Run the whole process
     */
   final def generate(): Seq[File] = {
-    (for {
-      database <- new DatabaseSchemaGatherer(settings).gatherDatabase
-      file <- Right(
-        generateForAllTables(
-          database.tables,
-          database.views,
-          database.foreignKeys,
-        ),
-      )
-    } yield file) match {
-      case Left(errors) =>
-        errors.foreach(println)
-        Seq()
-      case Right(files) =>
-        println("Done!")
-        files
-    }
-
+    ???
   }
 
   /**
@@ -51,16 +33,11 @@ abstract class Generator(settings: Settings) {
   ): Seq[File] = {
     import settings._
 
-    val rootOutputDir = rootPackage match {
-      case "" => new File(rootPath)
-      case _  => new File(s"$rootPath/${rootPackage.replace(".", "/")}")
-    }
-
-    rootOutputDir.mkdirs()
+    val rootOutputDir: File = createRootOutputDir(rootPath, rootPackage)
 
     val allTableFiles = tables.flatMap(generateForTable(_, foreignKeys))
     val allViewFiles = views.flatMap(generateForView)
-    val utilFile = generateUtil.toList
+    val utilFile = generateUtil
 
     (allTableFiles ++ allViewFiles ++ utilFile).map { ts =>
       val fileOutputDir = new File(rootOutputDir, ts.relativePath)
@@ -72,6 +49,16 @@ abstract class Generator(settings: Settings) {
     }
   }
 
+  private def createRootOutputDir(rootPath: String, rootPackage: String) = {
+    val rootOutputDir = rootPackage match {
+      case "" => new File(rootPath)
+      case _ => new File(s"$rootPath/${rootPackage.replace(".", "/")}")
+    }
+
+    rootOutputDir.mkdirs()
+    rootOutputDir
+  }
+
   /**
     * Generates zero or more files for a given table.
     *
@@ -79,10 +66,7 @@ abstract class Generator(settings: Settings) {
     * @param foreignKeys List of ALL foreign keys in the schema.
     * @return List of GeneratedFile containing the path and contents for each file.
     */
-  def generateForTable(
-    table: Table,
-    foreignKeys: List[ForeignKey],
-  ): List[GeneratedFile]
+  def generateForTable(table: Table, foreignKeys: List[ForeignKey]): List[GeneratedFile]
 
   /**
     * Generates zero or more files for a given view.
@@ -90,15 +74,13 @@ abstract class Generator(settings: Settings) {
     * @param view The view the code is generated for.
     * @return List of GeneratedFile containing the path and contents for each file.
     */
-  def generateForView(
-    view: View,
-  ): List[GeneratedFile]
+  def generateForView(view: View): List[GeneratedFile]
 
   /**
-    * Generates a single utility file that is not dependent on actual database schema.
+    * Generates utility file(s) that are not dependent on actual database schema.
     * Use it to generate model or repository superclasses, etc.
     * @return
     */
-  def generateUtil: Option[GeneratedFile]
+  def generateUtil: List[GeneratedFile]
 
 }

@@ -2,24 +2,17 @@ package com.github.pgmirror.doobie
 
 import com.github.pgmirror.core.model.generator.ColumnAnnotation._
 import com.github.pgmirror.core.model.generator.TableAnnotation._
-import com.github.pgmirror.core.model.generator.{
-  Column,
-  ColumnAnnotation,
-  ForeignKey,
-  Table,
-  TableLike,
-  View,
-}
+import com.github.pgmirror.core.model.generator._
 import com.github.pgmirror.core.{GeneratedFile, Generator, Settings}
 
 class DoobieGenerator(settings: Settings) extends Generator(settings) {
 
   private val tq = "\"\"\""
 
-  override def generateUtil: Option[GeneratedFile] =
-    Some {
+  override def generateUtil: List[GeneratedFile] =
+    List(
       GeneratedFile("repository", "DoobieRepository.scala", generateBaseRepository())
-    }
+    )
 
   private def generateBaseRepository(): String =
     s"""package ${settings.rootPackage}.repository
@@ -104,9 +97,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
          |      )
          |
          |    val subselect =
-         |      fr${tq}from (SELECT (___inner::${table.nameWithSchema}).* from (select ${table.columns
-           .map(tc => s"$${item.${tc.propName}}")
-           .mkString(",")}) as ___inner) as __outer)$tq
+         |      fr${tq}from (SELECT (___inner::${table.nameWithSchema}).* from (select ${table.columns.map(tc => s"$${item.${tc.scalaPropName}}").mkString(",")}) as ___inner) as __outer)$tq
          |
          |    val returning = fr${tq}returning ${table.columns
            .map(_.tableColumn)
@@ -122,35 +113,33 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
          |      insert into ${table.nameWithSchema}
          |             (${table.columns.map(_.columnNameQuoted).mkString(",\n              ")})
          |             values
-         |             (${table.columns
-           .map(tc => s"$${item.${tc.propName}}")
-           .mkString(",\n              ")})
+         |             (${table.columns.map(tc => s"$${item.${tc.scalaPropName}}").mkString(",\n              ")})
          |      returning ${table.columns.map(_.tableColumn).mkString(",\n                ")}
          |    $tq
          |""".stripMargin
 
     val getDef = pkColumn
       .map { p =>
-        s"""  override def getSql(${p.prop}): Fragment =
+        s"""  override def getSql(${p.scalaProp}): Fragment =
          |    sql$tq
          |      select ${table.columns.map(_.columnNameQuoted).mkString(",\n             ")}
          |        from ${table.nameWithSchema}
-         |       where ${p.tableColumn} = $$${p.propName}
+         |       where ${p.tableColumn} = $$${p.scalaPropName}
          |    $tq
          |""".stripMargin
       }
       .getOrElse("")
 
     val finds = table.columns.filter(c => c.annotations.contains(Find)).map { c =>
-      s"""  def findBy${c.propName.capitalize}Sql(${c.prop}): Fragment =
+      s"""  def findBy${c.scalaPropName.capitalize}Sql(${c.scalaProp}): Fragment =
          |    sql$tq
          |      select ${table.columns.map(_.columnNameQuoted).mkString(",\n             ")}
          |        from ${table.nameWithSchema}
-         |       where ${c.tableColumn} = $$${c.propName}
+         |       where ${c.tableColumn} = $$${c.scalaPropName}
          |    $tq
          |
-         |  def findBy${c.propName.capitalize}(${c.prop}): ConnectionIO[List[${table.className}]] = {
-         |    findBy${c.propName.capitalize}Sql(${c.propName})
+         |  def findBy${c.scalaPropName.capitalize}(${c.scalaProp}): ConnectionIO[List[${table.className}]] = {
+         |    findBy${c.scalaPropName.capitalize}Sql(${c.scalaPropName})
          |    .query[${table.className}]
          |    .to[List]
          |  }
@@ -158,15 +147,15 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
     }
 
     val findOnes = table.columns.filter(c => c.annotations.contains(FindOne)).map { c =>
-      s"""  def findOneBy${c.propName.capitalize}Sql(${c.prop}): Fragment =
+      s"""  def findOneBy${c.scalaPropName.capitalize}Sql(${c.scalaProp}): Fragment =
          |    sql$tq
          |      select ${table.columns.map(_.columnNameQuoted).mkString(",\n             ")}
          |        from ${table.nameWithSchema}
-         |       where ${c.tableColumn} = $$${c.propName}
+         |       where ${c.tableColumn} = $$${c.scalaPropName}
          |    $tq
          |
-         |  def findOneBy${c.propName.capitalize}(${c.prop}): ConnectionIO[Option[${table.className}]] = {
-         |    findOneBy${c.propName.capitalize}Sql(${c.propName}).query[${table.className}]
+         |  def findOneBy${c.scalaPropName.capitalize}(${c.scalaProp}): ConnectionIO[Option[${table.className}]] = {
+         |    findOneBy${c.scalaPropName.capitalize}Sql(${c.scalaPropName}).query[${table.className}]
          |    .option
          |  }
          |""".stripMargin
@@ -174,10 +163,10 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
 
     val deleteDef = pkColumn
       .map { p =>
-        s"""  override def deleteSql(${p.prop}): Fragment =
+        s"""  override def deleteSql(${p.scalaProp}): Fragment =
          |    sql$tq
          |      delete from ${table.nameWithSchema}
-         |       where ${p.columnNameQuoted} = $$${p.propName}
+         |       where ${p.columnNameQuoted} = $$${p.scalaPropName}
          |      returning ${table.columns.map(_.columnNameQuoted).mkString(",\n                ")}
          |    $tq
          |""".stripMargin
@@ -191,9 +180,9 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
          |      update ${table.nameWithSchema}
          |         set ${table.columns
              .filterNot(_.isPrimaryKey)
-             .map(tc => s"${tc.columnNameQuoted} = $${item.${tc.propName}}")
+             .map(tc => s"${tc.columnNameQuoted} = $${item.${tc.scalaPropName}}")
              .mkString(",\n             ")}
-         |       where ${p.tableColumn} = $${item.${p.propName}}
+         |       where ${p.tableColumn} = $${item.${p.scalaPropName}}
          |      returning ${table.columns.map(_.columnNameQuoted).mkString(",\n                ")}
          |    $tq
          |""".stripMargin
@@ -214,7 +203,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
       table.columns
         .map { c =>
           if (c.hasDefault)
-            s"_.${c.propName} == ${columnDefault(c.propType)}"
+            s"_.${c.scalaPropName} == ${columnDefault(c.scalaPropType)}"
           else
             "_ => false"
         }
@@ -227,7 +216,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |import ${tablePackage(settings.rootPackage, table.schemaName)}.${table.className}
        |import ${settings.rootPackage}.repository.DoobieRepository
        |
-       |trait ${table.className}Repository extends DoobieRepository[${table.className}, ${pkColumn.get.propType}] {
+       |trait ${table.className}Repository extends DoobieRepository[${table.className}, ${pkColumn.get.scalaPropType}] {
        |  val tableColumns = List(${table.columns.map(_.columnNameQuoted).mkString(",")})
        |
        |  val hasDefault: List[${table.className} => Boolean] = List(
@@ -271,11 +260,11 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
   private def generateDataClass(settings: Settings, table: TableLike): String = {
 
     def columnWithDefault(column: Column) =
-      column.propWithComment + " = " + columnDefault(column.propType)
+      column.scalaPropWithComment + " = " + columnDefault(column.scalaPropType)
 
     val columnList =
       table.columns
-        .map(c => if (c.hasDefault) columnWithDefault(c) else c.propWithComment)
+        .map(c => if (c.hasDefault) columnWithDefault(c) else c.scalaPropWithComment)
         .mkString(",\n  ")
 
     s"""package ${tablePackage(settings.rootPackage, table.schemaName)}
@@ -327,11 +316,11 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
       ann <- col.annotations.filter(ColumnAnnotation.filterValues.contains)
     } yield {
       val (paramName, paramNameVal) = ann match {
-        case FilterEq   => (s"${col.propName}_=", s"${col.propName}")
-        case FilterLt   => (s"${col.propName}_<", s"${col.propName}")
-        case FilterGt   => (s"${col.propName}_>", s"${col.propName}")
-        case FilterGtEq => (s"${col.propName}_>=", s"${col.propName}")
-        case FilterLtEq => (s"${col.propName}_<=", s"${col.propName}")
+        case FilterEq   => (s"${col.scalaPropName}_=", s"${col.scalaPropName}")
+        case FilterLt   => (s"${col.scalaPropName}_<", s"${col.scalaPropName}")
+        case FilterGt   => (s"${col.scalaPropName}_>", s"${col.scalaPropName}")
+        case FilterGtEq => (s"${col.scalaPropName}_>=", s"${col.scalaPropName}")
+        case FilterLtEq => (s"${col.scalaPropName}_<=", s"${col.scalaPropName}")
         case _          => throw new IllegalArgumentException("Only filter annotations allowed!")
       }
 
@@ -345,7 +334,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
       }
 
       (
-        s"$paramName : Option[${col.propType}] = None,",
+        s"$paramName : Option[${col.scalaPropType}] = None,",
         s"""val ${paramNameVal}Filter = $paramName.map(v => fr"${col.name} $filterOp $$v")""",
         s"${paramNameVal}Filter",
       )
@@ -411,7 +400,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
     List(rootPackage, schemaName).filterNot(_.isEmpty).mkString(".")
 
   private def repositoryImports(t: TableLike): String = {
-    val columnTypes = t.columns.map(_.propType).toSet
+    val columnTypes = t.columns.map(_.scalaPropType).toSet
 
     val sb =
       new StringBuilder()

@@ -1,5 +1,6 @@
 package com.github.pgmirror.core.model.generator
 
+import com.github.pgmirror.core.Names
 import com.github.pgmirror.core.model.gatherer.{PgColumn, PgTable}
 
 import scala.util.matching.Regex
@@ -41,7 +42,7 @@ object ColumnAnnotation {
     FilterLtEq,
   )
 
-  def findAllFor(in: PgColumn): List[ColumnAnnotation] =
+  def findAllForColumn(in: PgColumn): List[ColumnAnnotation] =
     values
       .filter(_.regex.findAllIn(in.description.getOrElse("")).nonEmpty)
 }
@@ -65,7 +66,7 @@ object TableAnnotation {
     History,
   )
 
-  def findAllFor(in: PgTable): List[TableAnnotation] =
+  def findAllForTable(in: PgTable): List[TableAnnotation] =
     values
       .filter(_.regex.findAllIn(in.description.getOrElse("")).nonEmpty)
 }
@@ -82,7 +83,7 @@ case class TableLike(
   annotations: List[TableAnnotation] = Nil,
 ) {
   def nameWithSchema: String =
-    List(schemaName, s""""$name"""").filterNot(_.isEmpty).mkString(".")
+    List(s""""$schemaName"""", s""""$name"""").filterNot(_.isEmpty).mkString(".")
 }
 
 case class Table(value: TableLike) extends AnyVal
@@ -104,7 +105,7 @@ case class Column(
   hasDefault: Boolean,
 ) {
 
-  def propType: String = {
+  def scalaPropType: String = {
     if (isNullable) {
       s"""Option[$modelType]"""
     } else {
@@ -112,31 +113,31 @@ case class Column(
     }
   }
 
-  def propName: String = {
-    val nameParts: Array[String] = name.split("_")
+  def scalaPropName: String = {
+    val rawPropName: String = Names.toPropertyCamelCase(name)
 
-    val rawPropName = nameParts.head + nameParts.tail.map(_.capitalize).mkString
-
-    if (rawPropName.matches("""^\d.*""")
-        || rawPropName == "type"
-        || rawPropName == "final"
-        || rawPropName == "class")
+    if (
+      rawPropName.matches("""^\d.*""")
+      || rawPropName == "type"
+      || rawPropName == "final"
+      || rawPropName == "class"
+    )
       "`" + rawPropName + "`"
     else
       rawPropName
   }
 
-  def prop: String =
-    s"""${propName}: ${propType}"""
+  def scalaProp: String =
+    s"""${scalaPropName}: ${scalaPropType}"""
 
-  def propWithComment: String = {
+  def scalaPropWithComment: String = {
     val commentOut = comment
       .map { co =>
         co.trim.split("\n").map(l => s"// $l").mkString("\n|  ") + "\n|  "
       }
       .getOrElse("")
 
-    s"""$commentOut$propName: $propType"""
+    s"""$commentOut$scalaPropName: $scalaPropType"""
   }
 
   def tableColumn: String = s""""${tableName}"."${name}""""

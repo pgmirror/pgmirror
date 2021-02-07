@@ -81,13 +81,13 @@ object SqlTypes {
           }
 
         case (pgs, pgt, "ARRAY") =>
-          val underlying: String = Names.camelCaseize(pgt.replaceFirst("_", ""))
+          val underlying: String = Names.toClassCamelCase(pgt.replaceFirst("_", ""))
           val modelType = s"Array[${finalType(packagePrefix, pgs, underlying)}]"
 
           ResolvedType(modelType, udt = true)
 
         case (pgs, pgt, "USER-DEFINED") =>
-          val underlying: String = Names.camelCaseize(pgt)
+          val underlying: String = Names.toClassCamelCase(pgt)
           val modelType: String = finalType(packagePrefix, pgs, underlying)
 
           ResolvedType(modelType, udt = true)

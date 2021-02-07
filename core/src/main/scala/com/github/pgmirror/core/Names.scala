@@ -2,11 +2,24 @@ package com.github.pgmirror.core
 
 object Names {
 
-  def camelCaseize(pgName: String): String =
-    pgName
-      .split("_")
-      .filterNot(_.isEmpty)
-      .map(_.capitalize)
-      .mkString
+  def toClassCamelCase(name: String): String = {
+    val nameParts: Array[String] = name.split("_")
+
+    if (nameParts.length > 1) {
+      nameParts.map(_.capitalize).mkString
+    } else {
+      name.capitalize
+    }
+  }
+
+  def toPropertyCamelCase(name: String): String = {
+    val nameParts: Array[String] = name.split("_")
+
+    if (nameParts.length > 1) {
+      nameParts.head.toLowerCase + nameParts.tail.map(_.capitalize).mkString
+    } else {
+      name
+    }
+  }
 
 }

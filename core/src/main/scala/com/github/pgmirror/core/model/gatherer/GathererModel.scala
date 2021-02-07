@@ -1,86 +1,91 @@
 package com.github.pgmirror.core.model.gatherer
 
-import java.sql.ResultSet
+import java.sql.{Connection, ResultSet}
+import scala.collection.mutable
 
 case class PgForeignKey(
   tableSchema: String,
   tableName: String,
-  constraintSchema: String,
-  constraintName: String,
   columnName: String,
   foreignTableSchema: String,
   foreignTableName: String,
   foreignColumnName: String,
+  keySeq: Int,
+  fkName: String,
+  pkName: String
 )
 object PgForeignKey {
-  def fromResultSet(rs: ResultSet): PgForeignKey = {
-    PgForeignKey(
-      tableSchema = rs.getString("table_schema"),
-      tableName = rs.getString("table_name"),
-      constraintSchema = rs.getString("constraint_schema"),
-      constraintName = rs.getString("constraint_name"),
-      columnName = rs.getString("column_name"),
-      foreignTableSchema = rs.getString("foreign_table_schema"),
-      foreignTableName = rs.getString("foreign_table_name"),
-      foreignColumnName = rs.getString("foreign_column_name"),
-    )
+  def getForTable(schema: String, table: String)(conn: Connection): List[PgForeignKey] = {
+    val importedKeysRs = conn.getMetaData.getImportedKeys(null, schema, table)
+    try {
+      val res = mutable.ListBuffer[PgForeignKey]()
+      while (importedKeysRs.next()) {
+        res.append(fromResultSet(importedKeysRs))
+      }
+      res.toList
+    } finally {
+      importedKeysRs.close()
+    }
   }
 
-  val sql: String =
-    """SELECT
-      |    tc.table_schema,
-      |    tc.table_name,
-      |    tc.constraint_schema,
-      |    tc.constraint_name,
-      |    kcu.column_name,
-      |    ccu.table_schema AS foreign_table_schema,
-      |    ccu.table_name AS foreign_table_name,
-      |    ccu.column_name AS foreign_column_name
-      |FROM
-      |    information_schema.table_constraints AS tc
-      |    JOIN information_schema.key_column_usage AS kcu
-      |      ON tc.constraint_name = kcu.constraint_name
-      |      AND tc.table_schema = kcu.table_schema
-      |      AND tc.constraint_schema = tc.constraint_schema
-      |    JOIN information_schema.constraint_column_usage AS ccu
-      |      ON ccu.constraint_name = tc.constraint_name
-      |      AND ccu.constraint_schema = tc.constraint_schema
-      |      AND ccu.table_schema = tc.table_schema
-      |WHERE tc.constraint_type = 'FOREIGN KEY'
-      |""".stripMargin
-
+  def fromResultSet(rs: ResultSet): PgForeignKey = {
+    PgForeignKey(
+      tableSchema = rs.getString("FKTABLE_SCHEM"),
+      tableName = rs.getString("FKTABLE_NAME"),
+      columnName = rs.getString("FKCOLUMN_NAME"),
+      foreignTableSchema = rs.getString("PKTABLE_SCHEM"),
+      foreignTableName = rs.getString("PKTABLE_NAME"),
+      foreignColumnName = rs.getString("PKCOLUMN_NAME"),
+      keySeq = rs.getInt("KEY_SEQ"),
+      fkName = rs.getString("FK_NAME"),
+      pkName = rs.getString("PK_NAME")
+    )
+  }
 }
 
 case class PgTable(
   tableSchema: String,
   tableName: String,
   tableType: String,
-  isInsertableInto: Boolean,
   description: Option[String],
 )
 object PgTable {
   def fromResultSet(rs: ResultSet): PgTable =
     PgTable(
-      tableSchema = rs.getString("table_schema"),
-      tableName = rs.getString("table_name"),
-      tableType = rs.getString("table_type"),
-      isInsertableInto = rs.getString("is_insertable_into") == "YES",
-      description = Option(rs.getString("table_description")),
+      tableSchema = rs.getString("TABLE_SCHEM"),
+      tableName = rs.getString("TABLE_NAME"),
+      tableType = rs.getString("TABLE_TYPE"),
+      description = Option(rs.getString("REMARKS")),
     )
 
-  val sql: String =
-    """select table_schema, table_name, table_type, is_insertable_into, obj_description(pg_class.oid, 'pg_class') as table_description
-      |from information_schema.tables JOIN pg_catalog.pg_class ON relnamespace=table_schema::regnamespace::oid AND relname=table_name
-      |order by table_schema,table_name
-      |""".stripMargin
+  def getTables(connection: Connection): List[PgTable] = {
+    val tableTypes = getTableTypes(connection).intersect(List("VIEW", "TABLE")).toArray
+    val tablesRs = connection.getMetaData.getTables(null, null, null, tableTypes)
+    try {
+      val res = mutable.ListBuffer[PgTable]()
+      while (tablesRs.next()) {
+        res.append(fromResultSet(tablesRs))
+      }
+      res.toList
+    } finally {
+      tablesRs.close()
+    }
+  }
 
-  def sqlSchemaInList(schemas: List[String]): String =
-    s"""select table_schema, table_name, table_type, is_insertable_into, obj_description(pg_class.oid, 'pg_class') as table_description
-      |from information_schema.tables JOIN pg_catalog.pg_class ON relnamespace=table_schema::regnamespace::oid AND relname=table_name
-      |where table_schema in (${schemas.map(_ => "?").mkString(",")})
-      |order by table_schema,table_name
-      |""".stripMargin
+  private def getTableTypes(connection: Connection) = {
+    val tableTypesRs = connection.getMetaData.getTableTypes
+    try {
+      val tableTypes = mutable.ListBuffer[String]()
+      while (tableTypesRs.next()) {
+        tableTypes.append(tableTypesRs.getString("TABLE_TYPE"))
+      }
+      tableTypes.toList
+    } finally {
+      tableTypesRs.close()
+    }
+  }
 }
+
 case class PgColumn(
   tableSchema: String,
   tableName: String,
@@ -89,42 +94,74 @@ case class PgColumn(
   columnDefault: String,
   isNullable: Boolean,
   isPrimaryKey: Boolean,
-  dataType: String,
-  udtSchema: String,
-  udtName: String,
+  dataType: Int,
+  dataTypeName: String,
   description: Option[String],
 )
 object PgColumn {
   def fromResultSet(rs: ResultSet): PgColumn =
     PgColumn(
-      tableSchema = rs.getString("table_schema"),
-      tableName = rs.getString("table_name"),
-      columnName = rs.getString("column_name"),
-      ordinalPosition = rs.getInt("ordinal_position"),
-      columnDefault = Option(rs.getString("column_default")).getOrElse(""),
-      isNullable = rs.getString("is_nullable") == "YES",
-      dataType = rs.getString("data_type"),
-      udtSchema = rs.getString("udt_schema"),
-      udtName = rs.getString("udt_name"),
-      isPrimaryKey = rs.getBoolean("is_primary"),
-      description = Option(rs.getString("column_description")),
+      tableSchema = rs.getString("TABLE_SCHEM"),
+      tableName = rs.getString("TABLE_NAME"),
+      columnName = rs.getString("COLUMN_NAME"),
+      ordinalPosition = rs.getInt("ORDINAL_POSITION"),
+      columnDefault = Option(rs.getString("COLUMN_DEF")).getOrElse(""),
+      isNullable = rs.getString("IS_NULLABLE") == "YES",
+      dataType = rs.getInt("DATA_TYPE"),
+      dataTypeName = rs.getString("TYPE_NAME"),
+      isPrimaryKey = false,
+      description = Option(rs.getString("REMARKS")),
     )
 
-  val sql: String =
-    """with is_primary as (
-      | select table_schema, table_name, a.attname, a.attnum
-      | from information_schema.tables
-      |      join pg_index i on i.indrelid = ('"'||table_schema||'".'||'"'||table_name||'"')::regclass
-      |      join pg_attribute a on a.attrelid=i.indrelid AND a.attnum = ANY(i.indkey)
-      |      where table_type='BASE TABLE' and i.indisprimary
-      |)
-      |select table_schema, table_name, column_name, ordinal_position, column_default, is_nullable, data_type, udt_schema, udt_name,
-      |       exists(select * from is_primary ip where ip.table_schema=table_schema and ip.table_name=table_name and ip.attnum=ordinal_position) as is_primary,
-      |       col_description(pg_class.oid, ordinal_position) as column_description
-      |from information_schema.columns JOIN pg_catalog.pg_class ON relnamespace=table_schema::regnamespace::oid AND relname=table_name
-      |order by table_schema, table_name, ordinal_position
-      |""".stripMargin
+  def getColumns(connection: Connection, tables: List[PgTable]): Map[PgTable, List[PgColumn]] = {
+    val allColumns = mutable.HashMap[PgTable, List[PgColumn]]()
+    tables.foreach { t =>
+      val columnsList = mutable.ListBuffer[PgColumn]()
+      val columnsRs = connection.getMetaData.getColumns(null, t.tableSchema, t.tableName, null)
+      try {
+        while (columnsRs.next()) {
+          columnsList.append(fromResultSet(columnsRs))
+        }
+      } finally {
+        columnsRs.close()
+      }
+      allColumns.put(t, columnsList.toList)
+    }
 
+    allColumns.toMap
+  }
+}
+
+case class PgUdt(
+  udtSchema: String,
+  udtName: String,
+  javaClass: String,
+  dataType: Int,
+  remarks: Option[String]
+)
+
+object PgUdt {
+  def fromResultSet(resultSet: ResultSet): PgUdt =
+    PgUdt(
+      resultSet.getString("TYPE_SCHEM"),
+      resultSet.getString("TYPE_NAME"),
+      resultSet.getString("CLASS_NAME"),
+      resultSet.getInt("DATA_TYPE"),
+      Option(resultSet.getString("REMARKS"))
+    )
+
+  def getUdts(connection: Connection): List[PgUdt] = {
+    val udtsRs = connection.getMetaData.getUDTs(null, null, null, null)
+    try {
+      val res = mutable.ListBuffer[PgUdt]()
+      while (udtsRs.next()) {
+        res.append(fromResultSet(udtsRs))
+      }
+      res.toList
+    } finally {
+      udtsRs.close()
+    }
+  }
 }
 
 case class PgUdtAttribute(
@@ -134,27 +171,32 @@ case class PgUdtAttribute(
   ordinalPosition: Int,
   isNullable: Boolean,
   dataType: String,
-  attributeUdtSchema: String,
-  attributeUdtName: String,
 )
+
 object PgUdtAttribute {
   def fromResultSet(rs: ResultSet): PgUdtAttribute =
     PgUdtAttribute(
-      udtSchema = rs.getString("udt_schema"),
-      udtName = rs.getString("udt_name"),
-      attributeName = rs.getString("attribute_name"),
-      ordinalPosition = rs.getInt("ordinal_position"),
-      isNullable = rs.getString("is_nullable") == "YES",
-      dataType = rs.getString("data_type"),
-      attributeUdtSchema = rs.getString("attribute_udt_schema"),
-      attributeUdtName = rs.getString("attribute_udt_name"),
+      udtSchema = rs.getString("TYPE_SCHEM"),
+      udtName = rs.getString("TYPE_NAME"),
+      attributeName = rs.getString("ATTR_NAME"),
+      ordinalPosition = rs.getInt("ORDINAL_POSITION"),
+      isNullable = rs.getString("IS_NULLABLE") == "YES",
+      dataType = rs.getString("ATTR_TYPE_NAME")
     )
 
-  val sql: String =
-    """select udt_schema, udt_name, attribute_name, ordinal_position, is_nullable, data_type, attribute_udt_schema, attribute_udt_name
-      |from information_schema.attributes
-      |""".stripMargin
+  def getAttributesForUdt(connection: Connection, udt: PgUdt): List[PgUdtAttribute] = {
+    val rs = connection.getMetaData.getAttributes(null, udt.udtSchema,udt.udtName, null)
 
+    try {
+      val res = mutable.ListBuffer[PgUdtAttribute]()
+      while (rs.next()) {
+        res.append(fromResultSet(rs))
+      }
+      res.toList
+    } finally {
+      rs.close()
+    }
+  }
 }
 
 case class PgEnum(
