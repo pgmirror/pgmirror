@@ -1,7 +1,7 @@
 package com.github.pgmirror.core.model.generator
 
 import com.github.pgmirror.core.Names
-import com.github.pgmirror.core.model.gatherer.{PgColumn, PgTable}
+import com.github.pgmirror.core.model.database
 
 import scala.util.matching.Regex
 
@@ -42,7 +42,7 @@ object ColumnAnnotation {
     FilterLtEq,
   )
 
-  def findAllForColumn(in: PgColumn): List[ColumnAnnotation] =
+  def findAllForColumn(in: database.Column): List[ColumnAnnotation] =
     values
       .filter(_.regex.findAllIn(in.description.getOrElse("")).nonEmpty)
 }
@@ -66,7 +66,7 @@ object TableAnnotation {
     History,
   )
 
-  def findAllForTable(in: PgTable): List[TableAnnotation] =
+  def findAllForTable(in: database.Table): List[TableAnnotation] =
     values
       .filter(_.regex.findAllIn(in.description.getOrElse("")).nonEmpty)
 }
@@ -128,7 +128,7 @@ case class Column(
   }
 
   def scalaProp: String =
-    s"""${scalaPropName}: ${scalaPropType}"""
+    s"""$scalaPropName: $scalaPropType"""
 
   def scalaPropWithComment: String = {
     val commentOut = comment
@@ -140,7 +140,7 @@ case class Column(
     s"""$commentOut$scalaPropName: $scalaPropType"""
   }
 
-  def tableColumn: String = s""""${tableName}"."${name}""""
+  def tableColumn: String = s""""$tableName"."$name""""
 
   def columnNameQuoted: String = s""""$name""""
 

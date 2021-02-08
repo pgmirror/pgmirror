@@ -8,13 +8,13 @@ class ConnectionMaker {
 
     val conn = DriverManager.getConnection(url, user, pass)
 
-    import model.gatherer._
+    import model.database._
 
-    val allTables = PgTable.getTables(conn)
+    val allTables = Table.getTables(conn)
 
     allTables.foreach{ t =>
       println(s"Analyzing table ${t.tableSchema}.${t.tableName}")
-      val fks = PgForeignKey.getForTable(t.tableSchema, t.tableName)(conn)
+      val fks = ForeignKey.getForTable(t.tableSchema, t.tableName)(conn)
 
       fks.foreach(println)
     }
