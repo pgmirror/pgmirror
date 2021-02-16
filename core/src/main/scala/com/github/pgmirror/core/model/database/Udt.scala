@@ -12,15 +12,6 @@ case class Udt(
 )
 
 object Udt {
-  def fromResultSet(resultSet: ResultSet): Udt =
-    Udt(
-      resultSet.getString("TYPE_SCHEM"),
-      resultSet.getString("TYPE_NAME"),
-      resultSet.getString("CLASS_NAME"),
-      resultSet.getInt("DATA_TYPE"),
-      Option(resultSet.getString("REMARKS")),
-    )
-
   def getUdts(connection: Connection): List[Udt] = {
     val udtsRs = connection.getMetaData.getUDTs(null, null, null, null)
     try {
@@ -33,4 +24,13 @@ object Udt {
       udtsRs.close()
     }
   }
+
+  private def fromResultSet(resultSet: ResultSet): Udt =
+    Udt(
+      resultSet.getString("TYPE_SCHEM"),
+      resultSet.getString("TYPE_NAME"),
+      resultSet.getString("CLASS_NAME"),
+      resultSet.getInt("DATA_TYPE"),
+      Option(resultSet.getString("REMARKS")),
+    )
 }

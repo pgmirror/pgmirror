@@ -29,7 +29,7 @@ object ForeignKey {
     }
   }
 
-  def fromResultSet(rs: ResultSet): ForeignKey = {
+  private def fromResultSet(rs: ResultSet): ForeignKey = {
     ForeignKey(
       tableSchema = rs.getString("FKTABLE_SCHEM"),
       tableName = rs.getString("FKTABLE_NAME"),

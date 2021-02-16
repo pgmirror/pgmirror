@@ -17,20 +17,6 @@ case class Column(
 )
 
 object Column {
-  def fromResultSet(rs: ResultSet): Column =
-    Column(
-      tableSchema = rs.getString("TABLE_SCHEM"),
-      tableName = rs.getString("TABLE_NAME"),
-      columnName = rs.getString("COLUMN_NAME"),
-      ordinalPosition = rs.getInt("ORDINAL_POSITION"),
-      columnDefault = Option(rs.getString("COLUMN_DEF")).getOrElse(""),
-      isNullable = rs.getString("IS_NULLABLE") == "YES",
-      dataType = rs.getInt("DATA_TYPE"),
-      dataTypeName = rs.getString("TYPE_NAME"),
-      isPrimaryKey = false,
-      description = Option(rs.getString("REMARKS")),
-    )
-
   def getColumns(connection: Connection, tables: List[Table]): Map[Table, List[Column]] = {
     val allColumns = mutable.HashMap[Table, List[Column]]()
     tables.foreach { t =>
@@ -48,4 +34,19 @@ object Column {
 
     allColumns.toMap
   }
+
+  private def fromResultSet(rs: ResultSet): Column =
+    Column(
+      tableSchema = rs.getString("TABLE_SCHEM"),
+      tableName = rs.getString("TABLE_NAME"),
+      columnName = rs.getString("COLUMN_NAME"),
+      ordinalPosition = rs.getInt("ORDINAL_POSITION"),
+      columnDefault = Option(rs.getString("COLUMN_DEF")).getOrElse(""),
+      isNullable = rs.getString("IS_NULLABLE") == "YES",
+      dataType = rs.getInt("DATA_TYPE"),
+      dataTypeName = rs.getString("TYPE_NAME"),
+      isPrimaryKey = false,
+      description = Option(rs.getString("REMARKS")),
+    )
+
 }

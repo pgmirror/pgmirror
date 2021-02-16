@@ -17,7 +17,7 @@ object Enum {
       |   join pg_catalog.pg_namespace n ON n.oid = t.typnamespace
       |group by n.nspname, t.typname""".stripMargin
 
-  def fromResultSet(rs: ResultSet): Enum = {
+  private def fromResultSet(rs: ResultSet): Enum = {
     val enumValues =
       rs.getArray("enum_values").getArray.asInstanceOf[Array[String]]
 

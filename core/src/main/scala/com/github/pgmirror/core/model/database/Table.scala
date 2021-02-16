@@ -11,14 +11,6 @@ case class Table(
 )
 
 object Table {
-  def fromResultSet(rs: ResultSet): Table =
-    Table(
-      tableSchema = rs.getString("TABLE_SCHEM"),
-      tableName = rs.getString("TABLE_NAME"),
-      tableType = rs.getString("TABLE_TYPE"),
-      description = Option(rs.getString("REMARKS")),
-    )
-
   def getTables(connection: Connection): List[Table] = {
     val tableTypes = getTableTypes(connection).intersect(List("VIEW", "TABLE")).toArray
     val tablesRs = connection.getMetaData.getTables(null, null, null, tableTypes)
@@ -32,6 +24,14 @@ object Table {
       tablesRs.close()
     }
   }
+
+  private def fromResultSet(rs: ResultSet): Table =
+    Table(
+      tableSchema = rs.getString("TABLE_SCHEM"),
+      tableName = rs.getString("TABLE_NAME"),
+      tableType = rs.getString("TABLE_TYPE"),
+      description = Option(rs.getString("REMARKS")),
+    )
 
   private def getTableTypes(connection: Connection) = {
     val tableTypesRs = connection.getMetaData.getTableTypes
