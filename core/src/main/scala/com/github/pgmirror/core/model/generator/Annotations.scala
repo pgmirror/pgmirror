@@ -68,4 +68,3 @@ object TableAnnotation {
     values
       .filter(_.regex.findAllIn(in.description.getOrElse("")).nonEmpty)
 }
-

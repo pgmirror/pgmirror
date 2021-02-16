@@ -12,7 +12,7 @@ class ConnectionMaker {
 
     val allTables = Table.getTables(conn)
 
-    allTables.foreach{ t =>
+    allTables.foreach { t =>
       println(s"Analyzing table ${t.tableSchema}.${t.tableName}")
       val fks = ForeignKey.getForTable(t.tableSchema, t.tableName)(conn)
 

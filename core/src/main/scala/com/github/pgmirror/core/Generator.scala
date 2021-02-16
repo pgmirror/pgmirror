@@ -13,8 +13,7 @@ case class GeneratedFile(
 
 abstract class Generator(settings: Settings) {
 
-  /**
-    * Run the whole process
+  /** Run the whole process
     */
   final def generate(): Seq[File] = {
     (for {
@@ -36,8 +35,7 @@ abstract class Generator(settings: Settings) {
     }
   }
 
-  /**
-    * For all tables call the generators and output the returned contents into spedified file paths.
+  /** For all tables call the generators and output the returned contents into spedified file paths.
     *
     * @param tables List of all table-like objects (tables and views).
     * @param foreignKeys List of all foreign keys in the schema.
@@ -68,15 +66,14 @@ abstract class Generator(settings: Settings) {
   private def createRootOutputDir(rootPath: String, rootPackage: String) = {
     val rootOutputDir = rootPackage match {
       case "" => new File(rootPath)
-      case _ => new File(s"$rootPath/${rootPackage.replace(".", "/")}")
+      case _  => new File(s"$rootPath/${rootPackage.replace(".", "/")}")
     }
 
     rootOutputDir.mkdirs()
     rootOutputDir
   }
 
-  /**
-    * Generates zero or more files for a given table.
+  /** Generates zero or more files for a given table.
     *
     * @param table The table the code is generated for.
     * @param foreignKeys List of ALL foreign keys in the schema.
@@ -84,16 +81,14 @@ abstract class Generator(settings: Settings) {
     */
   def generateForTable(table: Table, foreignKeys: List[ForeignKey]): List[GeneratedFile]
 
-  /**
-    * Generates zero or more files for a given view.
+  /** Generates zero or more files for a given view.
     *
     * @param view The view the code is generated for.
     * @return List of GeneratedFile containing the path and contents for each file.
     */
   def generateForView(view: View): List[GeneratedFile]
 
-  /**
-    * Generates utility file(s) that are not dependent on actual database schema.
+  /** Generates utility file(s) that are not dependent on actual database schema.
     * Use it to generate model or repository superclasses, etc.
     * @return
     */

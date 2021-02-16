@@ -13,7 +13,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
 
   override def generateUtil: List[GeneratedFile] =
     List(
-      GeneratedFile("repository", "DoobieRepository.scala", generateBaseRepository())
+      GeneratedFile("repository", "DoobieRepository.scala", generateBaseRepository()),
     )
 
   private def generateBaseRepository(): String =
@@ -87,6 +87,10 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
   private def generateTableRepository(settings: Settings, table: Table): String = {
     val pkColumn = table.columns.find(_.isPrimaryKey)
 
+    def selectScalaItems = {
+      table.columns.map(tc => s"$${item.${tc.scalaPropName}}").mkString(",")
+    }
+
     val insertDef =
       s"""  override def insertSql(item: ${Names.toClassCamelCase(table.name)}): Fragment = {
          |    val insertInto =
@@ -100,11 +104,9 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
          |      )
          |
          |    val subselect =
-         |      fr${tq}from (SELECT (___inner::${table.nameWithSchema}).* from (select ${table.columns.map(tc => s"$${item.${tc.scalaPropName}}").mkString(",")}) as ___inner) as __outer)$tq
+         |      fr${tq}from (SELECT (___inner::${table.nameWithSchema}).* from (select ${selectScalaItems}) as ___inner) as __outer)$tq
          |
-         |    val returning = fr${tq}returning ${table.columns
-           .map(_.tableColumn)
-           .mkString(",")}$tq
+         |    val returning = fr${tq}returning ${table.columns.map(_.tableColumn).mkString(",")}$tq
          |
          |    insertInto ++ values ++ subselect ++ returning
          |  }
@@ -182,9 +184,9 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
          |    sql$tq
          |      update ${table.nameWithSchema}
          |         set ${table.columns
-             .filterNot(_.isPrimaryKey)
-             .map(tc => s"${tc.columnNameQuoted} = $${item.${tc.scalaPropName}}")
-             .mkString(",\n             ")}
+          .filterNot(_.isPrimaryKey)
+          .map(tc => s"${tc.columnNameQuoted} = $${item.${tc.scalaPropName}}")
+          .mkString(",\n             ")}
          |       where ${p.tableColumn} = $${item.${p.scalaPropName}}
          |      returning ${table.columns.map(_.columnNameQuoted).mkString(",\n                ")}
          |    $tq
@@ -285,9 +287,11 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |
        |  implicit val customConfig: Configuration = Configuration.default.withSnakeCaseMemberNames
        |
-       |  implicit val decode${Names.toClassCamelCase(table.name)}: Decoder[${Names.toClassCamelCase(table.name)}] = deriveConfiguredDecoder
+       |  implicit val decode${Names.toClassCamelCase(table.name)}: Decoder[${Names
+      .toClassCamelCase(table.name)}] = deriveConfiguredDecoder
        |
-       |  implicit val encode${Names.toClassCamelCase(table.name)}: Encoder[${Names.toClassCamelCase(table.name)}] = deriveConfiguredEncoder
+       |  implicit val encode${Names.toClassCamelCase(table.name)}: Encoder[${Names
+      .toClassCamelCase(table.name)}] = deriveConfiguredEncoder
        |
        |}
        |
@@ -381,13 +385,13 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |
        |trait ${Names.toClassCamelCase(view.name)}Repository {
        |  def listFiltered(${filters
-         .map(f => "      " + f._1)
-         .mkString("\n", "\n", "\n")}$offsetParam$limitParam  ): Query0[${Names.toClassCamelCase(view.name)}] = {
+      .map(f => "      " + f._1)
+      .mkString("\n", "\n", "\n")}$offsetParam$limitParam  ): Query0[${Names.toClassCamelCase(view.name)}] = {
        |${filters.map(f => "    " + f._2).mkString("\n")}
        |    val selectFr: Fragment =
        |      fr${tq}select ${view.columns
-         .map(_.tableColumn)
-         .mkString(",")} from ${view.nameWithSchema}$tq
+      .map(_.tableColumn)
+      .mkString(",")} from ${view.nameWithSchema}$tq
        |$whereFr$offsetFr$limitFr
        |    val q: Fragment = selectFr$rWhereFr$rLimitFr$rOffsetFr
        |
@@ -395,7 +399,8 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |  }
        |}
        |
-       |object ${Names.toClassCamelCase(view.name)}DefaultRepository extends ${Names.toClassCamelCase(view.name)}Repository
+       |object ${Names.toClassCamelCase(view.name)}DefaultRepository extends ${Names
+      .toClassCamelCase(view.name)}Repository
        |
        |""".stripMargin
   }
@@ -411,17 +416,21 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
         .append("import doobie._\n")
         .append("|import doobie.implicits._\n")
 
-    if (columnTypes.contains("java.util.UUID")
-        || columnTypes.contains("Option[java.util.UUID]")) {
+    if (
+      columnTypes.contains("java.util.UUID")
+      || columnTypes.contains("Option[java.util.UUID]")
+    ) {
       sb.append("|import doobie.postgres.implicits._\n")
     }
 
-    if (columnTypes.contains("java.time.Instant")
-        || columnTypes.contains("Option[java.time.Instant]")
-        || columnTypes.contains("java.time.LocalDate")
-        || columnTypes.contains("Option[java.time.LocalDate]")
-        || columnTypes.contains("java.time.LocalTime")
-        || columnTypes.contains("Option[java.time.LocalTime]")) {
+    if (
+      columnTypes.contains("java.time.Instant")
+      || columnTypes.contains("Option[java.time.Instant]")
+      || columnTypes.contains("java.time.LocalDate")
+      || columnTypes.contains("Option[java.time.LocalDate]")
+      || columnTypes.contains("java.time.LocalTime")
+      || columnTypes.contains("Option[java.time.LocalTime]")
+    ) {
       sb.append("|import doobie.implicits.javatime._\n")
     }
 

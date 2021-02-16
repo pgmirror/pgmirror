@@ -53,14 +53,13 @@ class SqlTypesTest extends AnyFunSuite with Matchers {
       ("pg_catalog", "_text", "ARRAY", ResolvedType("Array[String]")),
     )
 
-    cases.foreach {
-      case (typSchema, typName, datType, result) =>
-        SqlTypes.typeMapping(
-          "package.prefix",
-          typSchema,
-          typName,
-          datType,
-        ) must equal(Right(result))
+    cases.foreach { case (typSchema, typName, datType, result) =>
+      SqlTypes.typeMapping(
+        "package.prefix",
+        typSchema,
+        typName,
+        datType,
+      ) must equal(Right(result))
     }
   }
 
