@@ -17,22 +17,17 @@ case class Column(
 )
 
 object Column {
-  def getColumns(connection: Connection, tables: List[Table]): Map[Table, List[Column]] = {
-    val allColumns = mutable.HashMap[Table, List[Column]]()
-    tables.foreach { t =>
-      val columnsList = mutable.ListBuffer[Column]()
-      val columnsRs = connection.getMetaData.getColumns(null, t.tableSchema, t.tableName, null)
-      try {
-        while (columnsRs.next()) {
-          columnsList.append(fromResultSet(columnsRs))
-        }
-      } finally {
-        columnsRs.close()
+  def getColumns(connection: Connection, schema: String, tableName: String): List[Column] = {
+    val columnsList = mutable.ListBuffer[Column]()
+    val columnsRs = connection.getMetaData.getColumns(null, schema, tableName, null)
+    try {
+      while (columnsRs.next()) {
+        columnsList.append(fromResultSet(columnsRs))
       }
-      allColumns.put(t, columnsList.toList)
+    } finally {
+      columnsRs.close()
     }
-
-    allColumns.toMap
+    columnsList.toList
   }
 
   private def fromResultSet(rs: ResultSet): Column =

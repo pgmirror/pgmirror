@@ -1,4 +1,4 @@
-package com.github.pgmirror.doobie
+package com.github.pgmirror.generator.scala
 
 import com.github.pgmirror.core.Settings
 
@@ -11,7 +11,7 @@ object Main extends App {
       password = args(2),
       rootPath = args(3),
       rootPackage = args(4),
-      schemas = List("public", "auth"),
+      schemas = Set("public", "auth"),
       defaultSchema = "",
     ),
   ).generate()

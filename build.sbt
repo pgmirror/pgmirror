@@ -1,5 +1,5 @@
 lazy val scala212 = "2.12.11"
-lazy val scala213 = "2.13.3"
+lazy val scala213 = "2.13.5"
 lazy val supportedScalaVersions = List(scala213, scala212)
 
 ThisBuild / organization := "com.github.pgmirror"
@@ -7,7 +7,7 @@ ThisBuild / version      := "0.1.1-SNAPSHOT"
 ThisBuild / scalaVersion := scala212
 
 ThisBuild / githubTokenSource := Some(
-  TokenSource.Environment("PGMIRROR_GITHUB_TOKEN")
+  TokenSource.Environment("PGMIRROR_GITHUB_TOKEN"),
 )
 ThisBuild / githubOwner      := "pgmirror"
 ThisBuild / githubRepository := "pgmirror"
@@ -17,17 +17,22 @@ lazy val core = (project in file("core"))
     crossScalaVersions := supportedScalaVersions,
     name               := "pgmirror-core",
     libraryDependencies ++= Seq(
-      "org.postgresql"        % "postgresql"   % "42.2.14",
-      "org.scalatest"        %% "scalatest"    % "3.2.0" % Test
-    )
+      "org.postgresql" % "postgresql" % "42.2.19",
+      "com.h2database" % "h2"         % "1.4.200",
+      "org.scalatest" %% "scalatest"  % "3.2.5" % Test,
+    ),
   )
 
-lazy val doobie = (project in file("doobie"))
+lazy val scala = (project in file("scala-generator"))
   .settings(
     crossScalaVersions := supportedScalaVersions,
-    name               := "pgmirror-doobie"
+    name               := "pgmirror-scala-generator",
+    libraryDependencies ++= Seq(
+      "org.scalatest" %% "scalatest" % "3.2.0" % Test,
+    ),
   )
   .dependsOn(core)
+
 
 lazy val pgmirror = (project in file("."))
   .settings(
@@ -39,7 +44,7 @@ lazy val pgmirror = (project in file("."))
       "org.tpolecat" %% "doobie-postgres-circe" % "0.8.8",
       "io.circe"     %% "circe-core"            % "0.12.3",
       "io.circe"     %% "circe-generic"         % "0.12.3",
-      "io.circe"     %% "circe-generic-extras"  % "0.12.2"
-    )
+      "io.circe"     %% "circe-generic-extras"  % "0.12.2",
+    ),
   )
-  .aggregate(core, doobie)
+  .aggregate(core, scala)

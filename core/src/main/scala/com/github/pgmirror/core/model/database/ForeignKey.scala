@@ -16,7 +16,7 @@ case class ForeignKey(
 )
 
 object ForeignKey {
-  def getForTable(schema: String, table: String)(conn: Connection): List[ForeignKey] = {
+  def getForTable(conn: Connection, schema: String, table: String): List[ForeignKey] = {
     val importedKeysRs = conn.getMetaData.getImportedKeys(null, schema, table)
     try {
       val res = mutable.ListBuffer[ForeignKey]()

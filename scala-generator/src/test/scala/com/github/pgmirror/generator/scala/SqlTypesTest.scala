@@ -1,8 +1,9 @@
-package com.github.pgmirror.core
+package com.github.pgmirror.generator.scala
 
-import com.github.pgmirror.core.SqlTypes.ResolvedType
-import org.scalatest.matchers.must.Matchers
+import com.github.pgmirror.core.model.generator.SqlTypes
+import com.github.pgmirror.core.model.generator.SqlTypes.ResolvedType
 import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.matchers.must.Matchers
 
 class SqlTypesTest extends AnyFunSuite with Matchers {
 
@@ -56,8 +57,6 @@ class SqlTypesTest extends AnyFunSuite with Matchers {
     cases.foreach { case (typSchema, typName, datType, result) =>
       SqlTypes.typeMapping(
         "package.prefix",
-        typSchema,
-        typName,
         datType,
       ) must equal(Right(result))
     }

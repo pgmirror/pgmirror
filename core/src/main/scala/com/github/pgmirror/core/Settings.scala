@@ -10,8 +10,8 @@ case class Settings(
   password: String,
   rootPath: String,
   rootPackage: String,
-  // If you set schemas list then the schemaNameInclude will be ignored
-  schemas: List[String] = List(),
+  // If you set schemas then the schemaNameInclude will be ignored
+  schemas: Set[String] = Set(),
   schemaNameInclude: Regex = "^.*$".r,
   tableNameInclude: Regex = ".*".r,
   udtNameInclude: Regex = ".*".r,

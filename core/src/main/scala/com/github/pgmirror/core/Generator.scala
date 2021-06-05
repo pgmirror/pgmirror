@@ -16,23 +16,7 @@ abstract class Generator(settings: Settings) {
   /** Run the whole process
     */
   final def generate(): Seq[File] = {
-    (for {
-      database <- new DatabaseSchemaGatherer(settings).gatherDatabase
-      file <- Right(
-        generateForAllTables(
-          database.tables,
-          database.views,
-          database.foreignKeys,
-        ),
-      )
-    } yield file) match {
-      case Left(errors) =>
-        errors.foreach(println)
-        Seq()
-      case Right(files) =>
-        println("Done!")
-        files
-    }
+    ???
   }
 
   /** For all tables call the generators and output the returned contents into spedified file paths.
