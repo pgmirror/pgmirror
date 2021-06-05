@@ -9,7 +9,7 @@ import ScalaCommon._
 
 import java.io.File
 
-class DoobieGenerator(settings: Settings) extends Generator(settings) {
+class DoobieRepositoryGenerator(settings: Settings) extends Generator(settings) {
 
   private val tq = "\"\"\""
 
@@ -37,13 +37,13 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
       |      .map{ case (col, _) => col}
       |
       |  def insertSql(item: E): Fragment
-      |  def insertAllSql(item: E): Fragment
+      |  def insertAllColumnsSql(item: E): Fragment
       |  def getSql(pk: PK): Fragment
       |  def deleteSql(pk: PK): Fragment
       |  def updateSql(item: E): Fragment
       |
       |  def insertQuery(item: E): Query0[E] = insertSql(item).query[E]
-      |  def insertAllQuery(item: E): Query0[E] = insertAllSql(item).query[E]
+      |  def insertAllColumnsQuery(item: E): Query0[E] = insertAllColumnsSql(item).query[E]
       |  def getQuery(pk: PK): Query0[E] = getSql(pk).query[E]
       |  def deleteQuery(pk: PK): Query0[E] = deleteSql(pk).query[E]
       |  def updateQuery(item: E): Query0[E] = updateSql(item).query[E]
@@ -51,8 +51,8 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
       |  def insert(item: E): ConnectionIO[E] =
       |    insertQuery(item).unique
       |
-      |  def insertAllValues(item: E): ConnectionIO[E] =
-      |    insertAllQuery(item).unique
+      |  def insertAllColumns(item: E): ConnectionIO[E] =
+      |    insertAllColumnsQuery(item).unique
       |
       |  def get(pk: PK): ConnectionIO[Option[E]] =
       |    getQuery(pk).option
@@ -70,7 +70,8 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
     foreignKeys: List[ForeignKey],
   ): List[GeneratedFile] = {
     System.out.println(s"Processing table: ${table.nameWithSchema}")
-    val (repositoryPath: String, modelPath: String) = paths(table)
+    val repositoryPath =
+      Seq(table.schemaName, "repository").filterNot(_.isEmpty).mkString(File.separator)
 
     val repository: String =
       generateTableRepository(settings, table)
@@ -109,8 +110,8 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
          |  }
          |""".stripMargin
 
-    val insertAllDef =
-      s"""  override def insertAllSql(item: ${Names.toClassCamelCase(table.name)}): Fragment =
+    val insertAllColumnsDef =
+      s"""  override def insertAllColumnsSql(item: ${Names.toClassCamelCase(table.name)}): Fragment =
          |    sql$tq
          |      insert into ${table.nameWithSchema}
          |             (${table.columns.map(columnNameQuoted).mkString(",\n              ")})
@@ -193,7 +194,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
 
     val crudDefs =
       s"""$insertDef
-         |$insertAllDef
+         |$insertAllColumnsDef
          |$getDef
          |$deleteDef
          |$updateDef
@@ -218,7 +219,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |import ${tablePackage(settings.rootPackage, table.schemaName)}.${Names.toClassCamelCase(table.name)}
        |import ${settings.rootPackage}.repository.DoobieRepository
        |
-       |trait ${Names.toClassCamelCase(table.name)}Repository extends DoobieRepository[${Names.toClassCamelCase(table.name)}, ${scalaPropType(settings.rootPackage, pkColumn.get)}] {
+       |trait ${Names.toClassCamelCase(table.name)}Repository extends DoobieRepository[${Names.toClassCamelCase(table.name)}, ${pkColumn.map(scalaPropType(settings.rootPackage, _)).getOrElse("Nothing")}] {
        |  val tableColumns = List(${table.columns.map(columnNameQuoted).mkString(",")})
        |
        |  val hasDefault: List[${Names.toClassCamelCase(table.name)} => Boolean] = List(
@@ -237,7 +238,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
     view: View,
   ): List[GeneratedFile] = {
     System.out.println(s"Processing view: ${view.nameWithSchema}")
-    val (repositoryPath: String, modelPath: String) = paths(view)
+    val repositoryPath = Seq(view.schemaName, "repository").filterNot(_.isEmpty).mkString(File.separator)
 
     val repository: String =
       generateViewRepository(settings, view)
@@ -247,14 +248,6 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
       GeneratedFile(repositoryPath, Names.toClassCamelCase(view.name) + "Repository.scala", repository),
     )
   }
-
-  private def paths(table: NamedWithSchema) = {
-    val repositoryPath =
-      Seq(table.schemaName, "repository").filterNot(_.isEmpty).mkString(File.separator)
-    val modelPath = Seq(table.schemaName).filterNot(_.isEmpty).mkString(File.separator)
-    (repositoryPath, modelPath)
-  }
-
 
   private def generateViewRepository(settings: Settings, view: View): String = {
 
@@ -355,6 +348,12 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
     if (
       columnTypes.contains("java.util.UUID")
       || columnTypes.contains("Option[java.util.UUID]")
+      || columnTypes.contains("Array[Int]")
+      || columnTypes.contains("Option[Array[Int]]")
+      || columnTypes.contains("Array[String]")
+      || columnTypes.contains("Option[Array[String]]")
+      || columnTypes.contains("java.net.InetAddress")
+      || columnTypes.contains("Option[java.net.InetAddress]")
     ) {
       sb.append("|import doobie.postgres.implicits._\n")
     }

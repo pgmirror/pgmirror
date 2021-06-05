@@ -1,9 +1,10 @@
 package com.github.pgmirror.core
 
-import com.github.pgmirror.core.model.generator.{ForeignKey, Table, View}
+import com.github.pgmirror.core.model.generator.{Database, ForeignKey, Table, View}
 
 import java.io.File
 import java.nio.file.Files
+import java.sql.DriverManager
 
 case class GeneratedFile(
   relativePath: String,
@@ -15,9 +16,19 @@ abstract class Generator(settings: Settings) {
 
   /** Run the whole process
     */
-  final def generate(): Seq[File] = {
-    ???
-  }
+  final def generate(driverClass: String): Seq[File] = {
+    Class.forName(driverClass)
+    val conn = DriverManager.getConnection(
+      settings.url,
+      settings.user,
+      settings.password
+    )
+
+    Database.build(settings, conn).map{ database =>
+
+      generateForAllTables(database.tables, database.views, database.foreignKeys)
+    }
+  }.get
 
   /** For all tables call the generators and output the returned contents into spedified file paths.
     *

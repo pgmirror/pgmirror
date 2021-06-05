@@ -10,7 +10,6 @@ case class Column(
   ordinalPosition: Int,
   columnDefault: String,
   isNullable: Boolean,
-  isPrimaryKey: Boolean,
   dataType: Int,
   dataTypeName: String,
   description: Option[String],
@@ -40,7 +39,6 @@ object Column {
       isNullable = rs.getString("IS_NULLABLE") == "YES",
       dataType = rs.getInt("DATA_TYPE"),
       dataTypeName = rs.getString("TYPE_NAME"),
-      isPrimaryKey = false,
       description = Option(rs.getString("REMARKS")),
     )
 

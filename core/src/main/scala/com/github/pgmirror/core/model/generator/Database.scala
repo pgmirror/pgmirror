@@ -15,13 +15,26 @@ case class Database(
 
 object Database {
   def build(settings: Settings, connection: Connection): Try[Database] = Try {
-    val tables = database.Table
+    val (tables, views) = getAllTables(settings, connection).partition(_._1.isDefined)
+
+    Database(
+      tables = tables.map(_._1.get),
+      views = views.map(_._2.get),
+      udts = List(),
+      foreignKeys = List()
+    )
+  }
+
+  private def getAllTables(settings: Settings, connection: Connection) = {
+    database.Table
       .getTables(connection)
       .filter(tableBySchema(settings))
       .filter(t => settings.tableFilter.matcher(t.tableName).matches())
       .map { t =>
         val dbColumns = database.Column.getColumns(connection, t.tableSchema, t.tableName)
-        val dbFks = database.ForeignKey.getForTable(connection, t.tableSchema, t.tableName)
+        val pks = database.PrimaryKey.getPrimaryKeys(connection, t.tableSchema, t.tableName)
+
+        val pkSet = pks.map(_.columnName).toSet
 
         val generatorColumns = dbColumns.map { dbc =>
           Column(
@@ -30,7 +43,7 @@ object Database {
             name = dbc.columnName,
             columnType = dbc.dataTypeName,
             isNullable = dbc.isNullable,
-            isPrimaryKey = dbc.isPrimaryKey,
+            isPrimaryKey = pkSet.contains(dbc.columnName),
             ordinalPosition = dbc.ordinalPosition,
             comment = dbc.description,
             annotations = ColumnAnnotation.findAllForDbColumn(dbc),
@@ -38,9 +51,24 @@ object Database {
           )
         }
 
+        if (t.tableType == "TABLE") {
+          (Some(Table(
+            schemaName = t.tableSchema,
+            name = t.tableName,
+            columns = generatorColumns,
+            comment = t.description,
+            annotations = TableAnnotation.findAllForDbTable(t)
+          )), None)
+        } else {
+          (None, Some(View(
+            schemaName = t.tableSchema,
+            name = t.tableName,
+            columns = generatorColumns,
+            comment = t.description,
+            annotations = TableAnnotation.findAllForDbTable(t)
+          )))
+        }
       }
-
-    ???
   }
 
   def tableBySchema(settings: Settings): database.Table => Boolean = { t =>
@@ -50,4 +78,5 @@ object Database {
       settings.schemaFilter.matcher(t.tableSchema).matches()
     }
   }
+
 }

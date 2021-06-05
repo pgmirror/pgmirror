@@ -100,6 +100,10 @@ object SqlTypes {
 
   private val jsonType = ResolvedType("io.circe.Json")
 
+  private val dateRangeType = ResolvedType("(java.time.LocalDate, java.time.LocalDate)")
+
+  private val inetType = ResolvedType("java.net.InetAddress")
+
   def typeMapping(
     packagePrefix: String,
     dbDataType: String,
@@ -129,6 +133,7 @@ object SqlTypes {
         case "character"                   => Success(stringType)
         case "character varying"           => Success(stringType)
         case "varchar"                     => Success(stringType)
+        case "bpchar"                      => Success(stringType)
         case "text"                        => Success(stringType)
         case "date"                        => Success(localDateType)
         case "time"                        => Success(localTimeType)
@@ -141,6 +146,7 @@ object SqlTypes {
         case "uuid"                        => Success(uuidType)
         case "json"                        => Success(jsonType)
         case "jsonb"                       => Success(jsonType)
+        case "inet"                        => Success(inetType)
 
         // Simple arrays of built-in types
         case typeToParse if typeToParse.startsWith("_") =>
