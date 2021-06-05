@@ -1,9 +1,11 @@
-package com.github.pgmirror.doobie
+package com.github.pgmirror.generator.scala
 
 import com.github.pgmirror.core.model.generator.ColumnAnnotation._
 import com.github.pgmirror.core.model.generator.TableAnnotation._
 import com.github.pgmirror.core.model.generator._
 import com.github.pgmirror.core.{GeneratedFile, Generator, Names, Settings}
+
+import ScalaCommon._
 
 import java.io.File
 
@@ -75,11 +77,6 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
 
     //noinspection DuplicatedCode
     List(
-      GeneratedFile(
-        modelPath,
-        Names.toClassCamelCase(table.name) + ".scala",
-        generateDataClass(settings, table),
-      ),
       GeneratedFile(repositoryPath, Names.toClassCamelCase(table.name) + "Repository.scala", repository),
     )
   }
@@ -88,7 +85,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
     val pkColumn = table.columns.find(_.isPrimaryKey)
 
     def selectScalaItems = {
-      table.columns.map(tc => s"$${item.${tc.scalaPropName}}").mkString(",")
+      table.columns.map(tc => s"$${item.${scalaPropName(tc)}}").mkString(",")
     }
 
     val insertDef =
@@ -104,9 +101,9 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
          |      )
          |
          |    val subselect =
-         |      fr${tq}from (SELECT (___inner::${table.nameWithSchema}).* from (select ${selectScalaItems}) as ___inner) as __outer)$tq
+         |      fr${tq}from (SELECT (___inner::${table.nameWithSchema}).* from (select $selectScalaItems) as ___inner) as __outer)$tq
          |
-         |    val returning = fr${tq}returning ${table.columns.map(_.tableColumn).mkString(",")}$tq
+         |    val returning = fr${tq}returning ${table.columns.map(tableColumn).mkString(",")}$tq
          |
          |    insertInto ++ values ++ subselect ++ returning
          |  }
@@ -116,35 +113,35 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
       s"""  override def insertAllSql(item: ${Names.toClassCamelCase(table.name)}): Fragment =
          |    sql$tq
          |      insert into ${table.nameWithSchema}
-         |             (${table.columns.map(_.columnNameQuoted).mkString(",\n              ")})
+         |             (${table.columns.map(columnNameQuoted).mkString(",\n              ")})
          |             values
-         |             (${table.columns.map(tc => s"$${item.${tc.scalaPropName}}").mkString(",\n              ")})
-         |      returning ${table.columns.map(_.tableColumn).mkString(",\n                ")}
+         |             (${table.columns.map(tc => s"$${item.${scalaPropName(tc)}}").mkString(",\n              ")})
+         |      returning ${table.columns.map(tableColumn).mkString(",\n                ")}
          |    $tq
          |""".stripMargin
 
     val getDef = pkColumn
       .map { p =>
-        s"""  override def getSql(${p.scalaProp}): Fragment =
+        s"""  override def getSql(${scalaProp(settings.rootPackage, p)}): Fragment =
          |    sql$tq
-         |      select ${table.columns.map(_.columnNameQuoted).mkString(",\n             ")}
+         |      select ${table.columns.map(columnNameQuoted).mkString(",\n             ")}
          |        from ${table.nameWithSchema}
-         |       where ${p.tableColumn} = $$${p.scalaPropName}
+         |       where ${tableColumn(p)} = $$${scalaPropName(p)}
          |    $tq
          |""".stripMargin
       }
       .getOrElse("")
 
     val finds = table.columns.filter(c => c.annotations.contains(Find)).map { c =>
-      s"""  def findBy${c.scalaPropName.capitalize}Sql(${c.scalaProp}): Fragment =
+      s"""  def findBy${scalaPropName(c).capitalize}Sql(${scalaProp(settings.rootPackage, c)}): Fragment =
          |    sql$tq
-         |      select ${table.columns.map(_.columnNameQuoted).mkString(",\n             ")}
+         |      select ${table.columns.map(columnNameQuoted).mkString(",\n             ")}
          |        from ${table.nameWithSchema}
-         |       where ${c.tableColumn} = $$${c.scalaPropName}
+         |       where ${tableColumn(c)} = $$${scalaPropName(c)}
          |    $tq
          |
-         |  def findBy${c.scalaPropName.capitalize}(${c.scalaProp}): ConnectionIO[List[${Names.toClassCamelCase(table.name)}]] = {
-         |    findBy${c.scalaPropName.capitalize}Sql(${c.scalaPropName})
+         |  def findBy${scalaPropName(c).capitalize}(${scalaProp(settings.rootPackage, c)}): ConnectionIO[List[${Names.toClassCamelCase(table.name)}]] = {
+         |    findBy${scalaPropName(c).capitalize}Sql(${scalaPropName(c)})
          |    .query[${Names.toClassCamelCase(table.name)}]
          |    .to[List]
          |  }
@@ -152,15 +149,15 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
     }
 
     val findOnes = table.columns.filter(c => c.annotations.contains(FindOne)).map { c =>
-      s"""  def findOneBy${c.scalaPropName.capitalize}Sql(${c.scalaProp}): Fragment =
+      s"""  def findOneBy${scalaPropName(c).capitalize}Sql(${scalaProp(settings.rootPackage, c)}): Fragment =
          |    sql$tq
-         |      select ${table.columns.map(_.columnNameQuoted).mkString(",\n             ")}
+         |      select ${table.columns.map(columnNameQuoted).mkString(",\n             ")}
          |        from ${table.nameWithSchema}
-         |       where ${c.tableColumn} = $$${c.scalaPropName}
+         |       where ${tableColumn(c)} = $$${scalaPropName(c)}
          |    $tq
          |
-         |  def findOneBy${c.scalaPropName.capitalize}(${c.scalaProp}): ConnectionIO[Option[${Names.toClassCamelCase(table.name)}]] = {
-         |    findOneBy${c.scalaPropName.capitalize}Sql(${c.scalaPropName}).query[${Names.toClassCamelCase(table.name)}]
+         |  def findOneBy${scalaPropName(c).capitalize}(${scalaProp(settings.rootPackage, c)}): ConnectionIO[Option[${Names.toClassCamelCase(table.name)}]] = {
+         |    findOneBy${scalaPropName(c).capitalize}Sql(${scalaPropName(c)}).query[${Names.toClassCamelCase(table.name)}]
          |    .option
          |  }
          |""".stripMargin
@@ -168,11 +165,11 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
 
     val deleteDef = pkColumn
       .map { p =>
-        s"""  override def deleteSql(${p.scalaProp}): Fragment =
+        s"""  override def deleteSql(${scalaProp(settings.rootPackage, p)}): Fragment =
          |    sql$tq
          |      delete from ${table.nameWithSchema}
-         |       where ${p.columnNameQuoted} = $$${p.scalaPropName}
-         |      returning ${table.columns.map(_.columnNameQuoted).mkString(",\n                ")}
+         |       where ${columnNameQuoted(p)} = $$${scalaPropName(p)}
+         |      returning ${table.columns.map(columnNameQuoted).mkString(",\n                ")}
          |    $tq
          |""".stripMargin
       }
@@ -185,10 +182,10 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
          |      update ${table.nameWithSchema}
          |         set ${table.columns
           .filterNot(_.isPrimaryKey)
-          .map(tc => s"${tc.columnNameQuoted} = $${item.${tc.scalaPropName}}")
+          .map(tc => s"${columnNameQuoted(tc)} = $${item.${scalaPropName(tc)}}")
           .mkString(",\n             ")}
-         |       where ${p.tableColumn} = $${item.${p.scalaPropName}}
-         |      returning ${table.columns.map(_.columnNameQuoted).mkString(",\n                ")}
+         |       where ${tableColumn(p)} = $${item.${scalaPropName(p)}}
+         |      returning ${table.columns.map(columnNameQuoted).mkString(",\n                ")}
          |    $tq
          |""".stripMargin
       }
@@ -208,7 +205,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
       table.columns
         .map { c =>
           if (c.hasDefault)
-            s"_.${c.scalaPropName} == ${columnDefault(c.scalaPropType)}"
+            s"_.${scalaPropName(c)} == ${columnDefault(scalaPropType(settings.rootPackage, c))}"
           else
             "_ => false"
         }
@@ -221,8 +218,8 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |import ${tablePackage(settings.rootPackage, table.schemaName)}.${Names.toClassCamelCase(table.name)}
        |import ${settings.rootPackage}.repository.DoobieRepository
        |
-       |trait ${Names.toClassCamelCase(table.name)}Repository extends DoobieRepository[${Names.toClassCamelCase(table.name)}, ${pkColumn.get.scalaPropType}] {
-       |  val tableColumns = List(${table.columns.map(_.columnNameQuoted).mkString(",")})
+       |trait ${Names.toClassCamelCase(table.name)}Repository extends DoobieRepository[${Names.toClassCamelCase(table.name)}, ${scalaPropType(settings.rootPackage, pkColumn.get)}] {
+       |  val tableColumns = List(${table.columns.map(columnNameQuoted).mkString(",")})
        |
        |  val hasDefault: List[${Names.toClassCamelCase(table.name)} => Boolean] = List(
        |    $generateHasDefaults
@@ -247,11 +244,6 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
 
     //noinspection DuplicatedCode
     List(
-      GeneratedFile(
-        modelPath,
-        Names.toClassCamelCase(view.name) + ".scala",
-        generateDataClass(settings, view),
-      ),
       GeneratedFile(repositoryPath, Names.toClassCamelCase(view.name) + "Repository.scala", repository),
     )
   }
@@ -263,59 +255,6 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
     (repositoryPath, modelPath)
   }
 
-  private def generateDataClass(settings: Settings, table: NamedWithSchema with Columns): String = {
-
-    def columnWithDefault(column: Column) =
-      column.scalaPropWithComment + " = " + columnDefault(column.scalaPropType)
-
-    val columnList =
-      table.columns
-        .map(c => if (c.hasDefault) columnWithDefault(c) else c.scalaPropWithComment)
-        .mkString(",\n  ")
-
-    s"""package ${tablePackage(settings.rootPackage, table.schemaName)}
-       |
-       |import io.circe.{Decoder, Encoder}
-       |import io.circe.generic.extras.semiauto._
-       |import io.circe.generic.extras.Configuration
-       |
-       |case class ${Names.toClassCamelCase(table.name)} (
-       |  $columnList
-       |)
-       |
-       |object ${Names.toClassCamelCase(table.name)} {
-       |
-       |  implicit val customConfig: Configuration = Configuration.default.withSnakeCaseMemberNames
-       |
-       |  implicit val decode${Names.toClassCamelCase(table.name)}: Decoder[${Names
-      .toClassCamelCase(table.name)}] = deriveConfiguredDecoder
-       |
-       |  implicit val encode${Names.toClassCamelCase(table.name)}: Encoder[${Names
-      .toClassCamelCase(table.name)}] = deriveConfiguredEncoder
-       |
-       |}
-       |
-       |""".stripMargin
-  }
-
-  private def columnDefault(p: String) =
-    p match {
-      case "Int"                       => "Int.MinValue"
-      case "Long"                      => "Long.MinValue"
-      case "Float"                     => "Float.NaN"
-      case "Double"                    => "Double.NaN"
-      case "BigDecimal"                => "BigDecimal(0)"
-      case "Boolean"                   => "false"
-      case "Array[Byte]"               => "Array[Byte]()"
-      case "String"                    => "\"\""
-      case "java.util.UUID"            => "new java.util.UUID(0,0)"
-      case "java.time.LocalDate"       => "java.time.LocalDate.MIN"
-      case "java.time.LocalTime"       => "java.time.LocalTime.MIN"
-      case "java.time.Instant"         => "java.time.Instant.MIN"
-      case "java.time.LocalDateTime"   => "java.time.LocalDateTime.MIN"
-      case t if t.startsWith("Array[") => s"$t()"
-      case t                           => throw new UnsupportedOperationException(s"Unsupported primary key type: $t")
-    }
 
   private def generateViewRepository(settings: Settings, view: View): String = {
 
@@ -324,11 +263,11 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
       ann <- col.annotations.filter(ColumnAnnotation.filterValues.contains)
     } yield {
       val (paramName, paramNameVal) = ann match {
-        case FilterEq   => (s"${col.scalaPropName}_=", s"${col.scalaPropName}")
-        case FilterLt   => (s"${col.scalaPropName}_<", s"${col.scalaPropName}")
-        case FilterGt   => (s"${col.scalaPropName}_>", s"${col.scalaPropName}")
-        case FilterGtEq => (s"${col.scalaPropName}_>=", s"${col.scalaPropName}")
-        case FilterLtEq => (s"${col.scalaPropName}_<=", s"${col.scalaPropName}")
+        case FilterEq   => (s"${scalaPropName(col)}_=",  s"${scalaPropName(col)}")
+        case FilterLt   => (s"${scalaPropName(col)}_<",  s"${scalaPropName(col)}")
+        case FilterGt   => (s"${scalaPropName(col)}_>",  s"${scalaPropName(col)}")
+        case FilterGtEq => (s"${scalaPropName(col)}_>=", s"${scalaPropName(col)}")
+        case FilterLtEq => (s"${scalaPropName(col)}_<=", s"${scalaPropName(col)}")
         case _          => throw new IllegalArgumentException("Only filter annotations allowed!")
       }
 
@@ -342,7 +281,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
       }
 
       (
-        s"$paramName : Option[${col.scalaPropType}] = None,",
+        s"$paramName : Option[${scalaPropType(settings.rootPackage, col)}] = None,",
         s"""val ${paramNameVal}Filter = $paramName.map(v => fr"${col.name} $filterOp $$v")""",
         s"${paramNameVal}Filter",
       )
@@ -390,7 +329,7 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |${filters.map(f => "    " + f._2).mkString("\n")}
        |    val selectFr: Fragment =
        |      fr${tq}select ${view.columns
-      .map(_.tableColumn)
+      .map(tableColumn)
       .mkString(",")} from ${view.nameWithSchema}$tq
        |$whereFr$offsetFr$limitFr
        |    val q: Fragment = selectFr$rWhereFr$rLimitFr$rOffsetFr
@@ -405,11 +344,8 @@ class DoobieGenerator(settings: Settings) extends Generator(settings) {
        |""".stripMargin
   }
 
-  private def tablePackage(rootPackage: String, schemaName: String): String =
-    List(rootPackage, schemaName).filterNot(_.isEmpty).mkString(".")
-
   private def repositoryImports(t: Columns): String = {
-    val columnTypes = t.columns.map(_.scalaPropType).toSet
+    val columnTypes = t.columns.map(scalaPropType(settings.rootPackage, _)).toSet
 
     val sb =
       new StringBuilder()
