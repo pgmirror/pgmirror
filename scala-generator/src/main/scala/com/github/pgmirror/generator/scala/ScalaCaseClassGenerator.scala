@@ -56,27 +56,41 @@ class ScalaCaseClassGenerator(settings: Settings) extends Generator(settings) {
     val className = Names.toClassCamelCase(table.name)
     val classPackage = tablePackage(settings.rootPackage, table.schemaName)
 
+    val imports =
+      if (settings.generateCirce) {
+        """import io.circe.{Decoder, Encoder}
+          |import io.circe.generic.extras.semiauto._
+          |import io.circe.generic.extras.Configuration""".stripMargin
+      }
+      else {
+        ""
+      }
+
+    val companion =
+      if (settings.generateCirce) {
+        """object $className {
+          |
+          |  implicit val customConfig: Configuration = Configuration.default.withSnakeCaseMemberNames
+          |
+          |  implicit val circeDecoder: Decoder[$className] = deriveConfiguredDecoder
+          |
+          |  implicit val circeEncoder: Encoder[$className] = deriveConfiguredEncoder
+          |
+          |}
+          |""".stripMargin
+      } else {
+        ""
+      }
 
     s"""package $classPackage
        |
-       |import io.circe.{Decoder, Encoder}
-       |import io.circe.generic.extras.semiauto._
-       |import io.circe.generic.extras.Configuration
+       |$imports
        |
        |case class $className (
        |  $columnList
        |)
        |
-       |object $className {
-       |
-       |  implicit val customConfig: Configuration = Configuration.default.withSnakeCaseMemberNames
-       |
-       |  implicit val circeDecoder: Decoder[$className] = deriveConfiguredDecoder
-       |
-       |  implicit val circeEncoder: Encoder[$className] = deriveConfiguredEncoder
-       |
-       |}
-       |
+       |$companion
        |""".stripMargin
   }
 

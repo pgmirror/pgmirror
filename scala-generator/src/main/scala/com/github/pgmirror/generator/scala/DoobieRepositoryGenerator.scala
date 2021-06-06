@@ -22,11 +22,8 @@ class DoobieRepositoryGenerator(settings: Settings) extends Generator(settings) 
     s"""package ${settings.rootPackage}.repository
       |
       |import doobie._
-      |import io.circe.{Decoder, Encoder}
-      |import doobie.Read
       |
-      |
-      |abstract class DoobieRepository[E: Read : Encoder: Decoder, PK] {
+      |abstract class DoobieRepository[E: Read, PK] {
       |  def tableColumns: List[String]
       |  val hasDefault: List[E => Boolean]
       |
@@ -350,6 +347,8 @@ class DoobieRepositoryGenerator(settings: Settings) extends Generator(settings) 
     if (
       columnTypes.contains("java.util.UUID")
       || columnTypes.contains("Option[java.util.UUID]")
+      || columnTypes.contains("Array[java.util.UUID]")
+      || columnTypes.contains("Option[Array[java.util.UUID]]")
       || columnTypes.contains("Array[Int]")
       || columnTypes.contains("Option[Array[Int]]")
       || columnTypes.contains("Array[String]")
@@ -357,7 +356,14 @@ class DoobieRepositoryGenerator(settings: Settings) extends Generator(settings) 
       || columnTypes.contains("java.net.InetAddress")
       || columnTypes.contains("Option[java.net.InetAddress]")
     ) {
-      sb.append("|import doobie.postgres.implicits._\n")
+      if (settings.driverClass.contains("postgres")) {
+        sb.append("|import doobie.postgres._\n")
+        sb.append("|import doobie.postgres.implicits._\n")
+      } else if (settings.driverClass.contains("h2")) {
+        sb.append("|import doobie.h2._\n")
+      } else {
+        throw new UnsupportedOperationException("Unsupported database variant")
+      }
     }
 
     if (

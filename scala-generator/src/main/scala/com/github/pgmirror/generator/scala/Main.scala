@@ -4,6 +4,7 @@ import com.github.pgmirror.core.Settings
 
 object Main extends App {
   val genSettings = Settings(
+    driverClass = "org.postgresql.Driver",
     url = "jdbc:postgresql:taop",
     user = "taop",
     password = "taop",
@@ -21,7 +22,7 @@ object Main extends App {
     )
   )
 
-  new DoobieRepositoryGenerator(genSettings).generate("org.postgresql.Driver")
-  new ScalaCaseClassGenerator(genSettings).generate("org.postgresql.Driver")
+  new DoobieRepositoryGenerator(genSettings).generate()
+  new ScalaCaseClassGenerator(genSettings).generate()
 
 }

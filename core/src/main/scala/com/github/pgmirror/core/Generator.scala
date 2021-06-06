@@ -16,8 +16,8 @@ abstract class Generator(settings: Settings) {
 
   /** Run the whole process
     */
-  final def generate(driverClass: String): Seq[File] = {
-    Class.forName(driverClass)
+  final def generate(): Seq[File] = {
+    Class.forName(settings.driverClass)
     val conn = DriverManager.getConnection(
       settings.url,
       settings.user,

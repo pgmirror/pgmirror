@@ -5,6 +5,7 @@ import java.util.regex.Pattern
 import scala.util.matching.Regex
 
 case class Settings(
+  driverClass: String,
   url: String,
   user: String,
   password: String,
@@ -17,6 +18,7 @@ case class Settings(
   udtNameInclude: Regex = ".*".r,
   // A schema with this name will not generate a package
   defaultSchema: String = "public",
+  generateCirce: Boolean = false,
 ) {
   lazy val schemaFilter: Pattern = schemaNameInclude.pattern
   lazy val tableFilter: Pattern = tableNameInclude.pattern
