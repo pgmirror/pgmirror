@@ -80,7 +80,7 @@ class DoobieRepositoryGenerator(settings: Settings) extends Generator(settings) 
       val repository: String =
         generateTableRepository(settings, table)
 
-      GeneratedFile(repositoryPath, Names.toClassCamelCase(table.name) + "Repository.scala", repository),
+      GeneratedFile(repositoryPath, Names.toClassCamelCase(table.name) + "Repository.scala", repository)
     }.toList
   }
 
