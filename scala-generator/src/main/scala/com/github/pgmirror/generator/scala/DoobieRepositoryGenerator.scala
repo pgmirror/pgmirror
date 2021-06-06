@@ -374,7 +374,11 @@ class DoobieRepositoryGenerator(settings: Settings) extends Generator(settings) 
       || columnTypes.contains("java.time.LocalTime")
       || columnTypes.contains("Option[java.time.LocalTime]")
     ) {
-      sb.append("|import doobie.implicits.javatime._\n")
+      if (settings.driverClass.contains("postgres")) {
+        sb.append("|import doobie.postgres.implicits._\n")
+      } else {
+        sb.append("|import doobie.implicits.javatimedrivernative._\n")
+      }
     }
 
     if (columnTypes.contains("io.circe.Json") || columnTypes.contains("Option[io.circe.Json]")) {
