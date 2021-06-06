@@ -70,16 +70,18 @@ class DoobieRepositoryGenerator(settings: Settings) extends Generator(settings) 
     foreignKeys: List[ForeignKey],
   ): List[GeneratedFile] = {
     System.out.println(s"Processing table: ${table.nameWithSchema}")
-    val repositoryPath =
-      Seq(table.schemaName, "repository").filterNot(_.isEmpty).mkString(File.separator)
 
-    val repository: String =
-      generateTableRepository(settings, table)
+    // This repository works only for tables with a simple primary key.
+    // If the table does not have a PK skip generating the repository.
+    table.columns.find(_.isPrimaryKey).map { _ =>
+      val repositoryPath =
+        Seq(table.schemaName, "repository").filterNot(_.isEmpty).mkString(File.separator)
 
-    //noinspection DuplicatedCode
-    List(
+      val repository: String =
+        generateTableRepository(settings, table)
+
       GeneratedFile(repositoryPath, Names.toClassCamelCase(table.name) + "Repository.scala", repository),
-    )
+    }.toList
   }
 
   private def generateTableRepository(settings: Settings, table: Table): String = {
