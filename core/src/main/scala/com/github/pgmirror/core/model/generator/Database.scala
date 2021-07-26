@@ -4,6 +4,7 @@ import com.github.pgmirror.core.Settings
 import com.github.pgmirror.core.model.database
 
 import java.sql.Connection
+import scala.collection.mutable.ListBuffer
 import scala.util.Try
 
 case class Database(
@@ -15,18 +16,18 @@ case class Database(
 
 object Database {
   def build(settings: Settings, connection: Connection): Try[Database] = Try {
-    val (tables, views) = getAllTables(settings, connection).partition(_._1.isDefined)
+    val (tables, views, foreignKeys) = getAllTables(settings, connection)
 
     Database(
-      tables = tables.map(_._1.get),
-      views = views.map(_._2.get),
+      tables = tables,
+      views = views,
       udts = List(),
-      foreignKeys = List()
+      foreignKeys = foreignKeys
     )
   }
 
-  private def getAllTables(settings: Settings, connection: Connection) = {
-    database.Table
+  private def getAllTables(settings: Settings, connection: Connection): (List[Table], List[View], List[ForeignKey]) = {
+    val tables = database.Table
       .getTables(connection)
       .filter(tableBySchema(settings))
       .filter(t => settings.tableFilter.matcher(t.tableName).matches())
@@ -57,7 +58,7 @@ object Database {
             name = t.tableName,
             columns = generatorColumns,
             comment = t.description,
-            annotations = TableAnnotation.findAllForDbTable(t)
+            annotations = TableAnnotation.findAllForDbTable(t),
           )), None)
         } else {
           (None, Some(View(
@@ -69,6 +70,27 @@ object Database {
           )))
         }
       }
+    val onlyTables = tables.filter(_._1.isDefined).map(_._1.get)
+    val onlyViews = tables.filter(_._2.isDefined).map(_._2.get)
+    val foreignKeys: ListBuffer[ForeignKey] = ListBuffer()
+
+    val tablesWithFKs = onlyTables.map{ t =>
+      val dbFKs = database.ForeignKey.getForTable(connection, t.schemaName, t.name)
+      def findForeignTable(schema: String, name: String): Table =
+        onlyTables.find(fkt => fkt.schemaName == schema && fkt.name == name).get
+
+      t.copy(foreignKeys = dbFKs.map{ dbfk =>
+        val ft = findForeignTable(dbfk.foreignTableSchema, dbfk.foreignTableName)
+        val ftc = ft.columns.find(_.name == dbfk.foreignColumnName).get
+
+        val theFk = ForeignKey(t, t.columns.find(_.name == dbfk.columnName).get, ft, ftc)
+        foreignKeys += theFk
+
+        theFk
+      })
+    }
+
+    (tablesWithFKs, onlyViews, foreignKeys.toList)
   }
 
   def tableBySchema(settings: Settings): database.Table => Boolean = { t =>

@@ -1,5 +1,7 @@
 package com.github.pgmirror.core.model.generator
 
+import com.github.pgmirror.core.util.Dag
+
 case class Table(
   schemaName: String,
   name: String,
@@ -9,3 +11,6 @@ case class Table(
   annotations: List[TableAnnotation] = List(),
 ) extends NamedWithSchema
     with Columns
+    with Dag[Table] {
+  override def dependencies: Iterable[Table] = foreignKeys.map(_.foreignTable)
+}
