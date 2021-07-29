@@ -1,5 +1,5 @@
-lazy val scala212 = "2.12.11"
-lazy val scala213 = "2.13.5"
+lazy val scala212 = "2.12.14"
+lazy val scala213 = "2.13.6"
 lazy val supportedScalaVersions = List(scala213, scala212)
 
 ThisBuild / organization := "com.github.pgmirror"
@@ -17,9 +17,9 @@ lazy val core = (project in file("core"))
     crossScalaVersions := supportedScalaVersions,
     name               := "pgmirror-core",
     libraryDependencies ++= Seq(
-      "org.postgresql" % "postgresql" % "42.2.19",
+      "org.postgresql" % "postgresql" % "42.2.23",
       "com.h2database" % "h2"         % "1.4.200",
-      "org.scalatest" %% "scalatest"  % "3.2.5" % Test,
+      "org.scalatest" %% "scalatest"  % "3.2.9" % Test,
     ),
   )
 
@@ -28,7 +28,7 @@ lazy val scala = (project in file("scala-generator"))
     crossScalaVersions := supportedScalaVersions,
     name               := "pgmirror-scala-generator",
     libraryDependencies ++= Seq(
-      "org.scalatest" %% "scalatest" % "3.2.0" % Test,
+      "org.scalatest" %% "scalatest" % "3.2.9" % Test,
     ),
   )
   .dependsOn(core)

@@ -1,6 +1,6 @@
 package com.github.pgmirror.generator.scala
 
-import com.github.pgmirror.core.Settings
+import com.github.pgmirror.core.{GeneratorEngine, Settings}
 
 object Main extends App {
   val genSettings = Settings(
@@ -22,7 +22,10 @@ object Main extends App {
     )
   )
 
-  new DoobieRepositoryGenerator(genSettings).generate()
-  new ScalaCaseClassGenerator(genSettings).generate()
+  new GeneratorEngine(
+    genSettings,
+    new DoobieRepositoryGenerator(_),
+    new ScalaCaseClassGenerator(_)
+  ).generate()
 
 }
