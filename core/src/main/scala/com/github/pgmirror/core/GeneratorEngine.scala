@@ -15,11 +15,11 @@ class GeneratorEngine(settings: Settings, generatorProducers: (Settings) => Gene
     val conn = DriverManager.getConnection(
       settings.url,
       settings.user,
-      settings.password
+      settings.password,
     )
 
     Database.build(settings, conn).map { database =>
-      generators.flatMap{ g =>
+      generators.flatMap { g =>
         g.generateForAllTables(database.tables, database.views, database.foreignKeys)
       }
     }

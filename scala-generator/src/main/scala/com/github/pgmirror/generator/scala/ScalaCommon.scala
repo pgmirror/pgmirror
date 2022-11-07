@@ -24,10 +24,10 @@ object ScalaCommon {
 
     if (
       rawPropName.matches("""^\d.*""")
-        || rawPropName == "type"
-        || rawPropName == "final"
-        || rawPropName == "class"
-        || rawPropName == "val"
+      || rawPropName == "type"
+      || rawPropName == "final"
+      || rawPropName == "class"
+      || rawPropName == "val"
     )
       "`" + rawPropName + "`"
     else

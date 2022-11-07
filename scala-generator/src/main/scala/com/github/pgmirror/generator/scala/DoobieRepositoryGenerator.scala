@@ -25,7 +25,7 @@ class DoobieRepositoryGenerator(settings: Settings) extends Generator(settings) 
       |
       |abstract class DoobieRepository[E: Read, PK] {
       |  def tableColumns: List[String]
-      |  val hasDefault: List[E => Boolean]
+      |  val hasDefault: List[Boolean]
       |
       |  protected def columnsToInsert(item: E): List[String] =
       |    tableColumns
@@ -70,15 +70,18 @@ class DoobieRepositoryGenerator(settings: Settings) extends Generator(settings) 
 
     // This repository works only for tables with a simple primary key.
     // If the table does not have a PK skip generating the repository.
-    table.columns.find(_.isPrimaryKey).map { _ =>
-      val repositoryPath =
-        Seq(table.schemaName, "repository").filterNot(_.isEmpty).mkString(File.separator)
+    table.columns
+      .find(_.isPrimaryKey)
+      .map { _ =>
+        val repositoryPath =
+          Seq(table.schemaName, "repository").filterNot(_.isEmpty).mkString(File.separator)
 
-      val repository: String =
-        generateTableRepository(settings, table)
+        val repository: String =
+          generateTableRepository(settings, table)
 
-      GeneratedFile(repositoryPath, Names.toClassCamelCase(table.name) + "Repository.scala", repository)
-    }.toList
+        GeneratedFile(repositoryPath, Names.toClassCamelCase(table.name) + "Repository.scala", repository)
+      }
+      .toList
   }
 
   private def generateTableRepository(settings: Settings, table: Table): String = {
@@ -140,7 +143,8 @@ class DoobieRepositoryGenerator(settings: Settings) extends Generator(settings) 
          |       where ${tableColumn(c)} = $$${scalaPropName(c)}
          |    $tq
          |
-         |  def findBy${scalaPropName(c).capitalize}(${scalaProp(settings.rootPackage, c)}): ConnectionIO[List[${Names.toClassCamelCase(table.name)}]] = {
+         |  def findBy${scalaPropName(c).capitalize}(${scalaProp(settings.rootPackage, c)}): ConnectionIO[List[${Names
+        .toClassCamelCase(table.name)}]] = {
          |    findBy${scalaPropName(c).capitalize}Sql(${scalaPropName(c)})
          |    .query[${Names.toClassCamelCase(table.name)}]
          |    .to[List]
@@ -156,8 +160,12 @@ class DoobieRepositoryGenerator(settings: Settings) extends Generator(settings) 
          |       where ${tableColumn(c)} = $$${scalaPropName(c)}
          |    $tq
          |
-         |  def findOneBy${scalaPropName(c).capitalize}(${scalaProp(settings.rootPackage, c)}): ConnectionIO[Option[${Names.toClassCamelCase(table.name)}]] = {
-         |    findOneBy${scalaPropName(c).capitalize}Sql(${scalaPropName(c)}).query[${Names.toClassCamelCase(table.name)}]
+         |  def findOneBy${scalaPropName(c).capitalize}(${scalaProp(
+        settings.rootPackage,
+        c,
+      )}): ConnectionIO[Option[${Names.toClassCamelCase(table.name)}]] = {
+         |    findOneBy${scalaPropName(c).capitalize}Sql(${scalaPropName(c)}).query[${Names
+        .toClassCamelCase(table.name)}]
          |    .option
          |  }
          |""".stripMargin
@@ -218,7 +226,9 @@ class DoobieRepositoryGenerator(settings: Settings) extends Generator(settings) 
        |import ${tablePackage(settings.rootPackage, table.schemaName)}.${Names.toClassCamelCase(table.name)}
        |import ${settings.rootPackage}.repository.DoobieRepository
        |
-       |trait ${Names.toClassCamelCase(table.name)}Repository extends DoobieRepository[${Names.toClassCamelCase(table.name)}, ${pkColumn.map(scalaPropType(settings.rootPackage, _)).getOrElse("Nothing")}] {
+       |trait ${Names.toClassCamelCase(table.name)}Repository extends DoobieRepository[${Names.toClassCamelCase(
+      table.name,
+    )}, ${pkColumn.map(scalaPropType(settings.rootPackage, _)).getOrElse("Nothing")}] {
        |  val tableColumns = List(${table.columns.map(columnNameQuoted).mkString(",")})
        |
        |  val hasDefault: List[${Names.toClassCamelCase(table.name)} => Boolean] = List(
@@ -228,7 +238,8 @@ class DoobieRepositoryGenerator(settings: Settings) extends Generator(settings) 
        |$crudDefs
        |}
        |
-       |object ${Names.toClassCamelCase(table.name)}DefaultRepository extends ${Names.toClassCamelCase(table.name)}Repository
+       |object ${Names.toClassCamelCase(table.name)}DefaultRepository extends ${Names
+      .toClassCamelCase(table.name)}Repository
        |
        """.stripMargin
   }
@@ -255,9 +266,9 @@ class DoobieRepositoryGenerator(settings: Settings) extends Generator(settings) 
       ann <- col.annotations.filter(ColumnAnnotation.filterValues.contains)
     } yield {
       val (paramName, paramNameVal) = ann match {
-        case FilterEq   => (s"${scalaPropName(col)}_=",  s"${scalaPropName(col)}")
-        case FilterLt   => (s"${scalaPropName(col)}_<",  s"${scalaPropName(col)}")
-        case FilterGt   => (s"${scalaPropName(col)}_>",  s"${scalaPropName(col)}")
+        case FilterEq   => (s"${scalaPropName(col)}_=", s"${scalaPropName(col)}")
+        case FilterLt   => (s"${scalaPropName(col)}_<", s"${scalaPropName(col)}")
+        case FilterGt   => (s"${scalaPropName(col)}_>", s"${scalaPropName(col)}")
         case FilterGtEq => (s"${scalaPropName(col)}_>=", s"${scalaPropName(col)}")
         case FilterLtEq => (s"${scalaPropName(col)}_<=", s"${scalaPropName(col)}")
         case _          => throw new IllegalArgumentException("Only filter annotations allowed!")

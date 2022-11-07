@@ -19,13 +19,13 @@ object Main extends App {
       "raw",
       "sample",
       "sandbox",
-    )
+    ),
   )
 
   new GeneratorEngine(
     genSettings,
     new DoobieRepositoryGenerator(_),
-    new ScalaCaseClassGenerator(_)
+    new ScalaCaseClassGenerator(_),
   ).generate()
 
 }

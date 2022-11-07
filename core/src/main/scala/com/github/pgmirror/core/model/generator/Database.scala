@@ -22,7 +22,7 @@ object Database {
       tables = tables,
       views = views,
       udts = List(),
-      foreignKeys = foreignKeys
+      foreignKeys = foreignKeys,
     )
   }
 
@@ -53,33 +53,43 @@ object Database {
         }
 
         if (t.tableType == "TABLE") {
-          (Some(Table(
-            schemaName = t.tableSchema,
-            name = t.tableName,
-            columns = generatorColumns,
-            comment = t.description,
-            annotations = TableAnnotation.findAllForDbTable(t),
-          )), None)
+          (
+            Some(
+              Table(
+                schemaName = t.tableSchema,
+                name = t.tableName,
+                columns = generatorColumns,
+                comment = t.description,
+                annotations = TableAnnotation.findAllForDbTable(t),
+              ),
+            ),
+            None,
+          )
         } else {
-          (None, Some(View(
-            schemaName = t.tableSchema,
-            name = t.tableName,
-            columns = generatorColumns,
-            comment = t.description,
-            annotations = TableAnnotation.findAllForDbTable(t)
-          )))
+          (
+            None,
+            Some(
+              View(
+                schemaName = t.tableSchema,
+                name = t.tableName,
+                columns = generatorColumns,
+                comment = t.description,
+                annotations = TableAnnotation.findAllForDbTable(t),
+              ),
+            ),
+          )
         }
       }
     val onlyTables = tables.filter(_._1.isDefined).map(_._1.get)
     val onlyViews = tables.filter(_._2.isDefined).map(_._2.get)
     val foreignKeys: ListBuffer[ForeignKey] = ListBuffer()
 
-    val tablesWithFKs = onlyTables.map{ t =>
+    val tablesWithFKs = onlyTables.map { t =>
       val dbFKs = database.ForeignKey.getForTable(connection, t.schemaName, t.name)
       def findForeignTable(schema: String, name: String): Table =
         onlyTables.find(fkt => fkt.schemaName == schema && fkt.name == name).get
 
-      t.copy(foreignKeys = dbFKs.map{ dbfk =>
+      t.copy(foreignKeys = dbFKs.map { dbfk =>
         val ft = findForeignTable(dbfk.foreignTableSchema, dbfk.foreignTableName)
         val ftc = ft.columns.find(_.name == dbfk.foreignColumnName).get
 

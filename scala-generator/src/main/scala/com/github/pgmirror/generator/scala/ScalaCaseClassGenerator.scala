@@ -9,19 +9,19 @@ import java.io.File
 class ScalaCaseClassGenerator(settings: Settings) extends Generator(settings) {
 
   /** Generates zero or more files for a given table.
-   *
-   * @param table       The table the code is generated for.
-   * @param foreignKeys List of ALL foreign keys in the schema.
-   * @return List of GeneratedFile containing the path and contents for each file.
-   */
+    *
+    * @param table       The table the code is generated for.
+    * @param foreignKeys List of ALL foreign keys in the schema.
+    * @return List of GeneratedFile containing the path and contents for each file.
+    */
   override def generateForTable(table: Table, foreignKeys: List[ForeignKey]): List[GeneratedFile] =
     generateCaseClass(table)
 
   /** Generates zero or more files for a given view.
-   *
-   * @param view The view the code is generated for.
-   * @return List of GeneratedFile containing the path and contents for each file.
-   */
+    *
+    * @param view The view the code is generated for.
+    * @return List of GeneratedFile containing the path and contents for each file.
+    */
   override def generateForView(view: View): List[GeneratedFile] =
     generateCaseClass(view)
 
@@ -36,16 +36,18 @@ class ScalaCaseClassGenerator(settings: Settings) extends Generator(settings) {
   }
 
   /** Generates utility file(s) that are not dependent on actual database schema.
-   * Use it to generate model or repository superclasses, etc.
-   *
-   * @return
-   */
+    * Use it to generate model or repository superclasses, etc.
+    *
+    * @return
+    */
   override def generateUtil: List[GeneratedFile] = List()
 
   private def generateDataClass(settings: Settings, table: NamedWithSchema with Columns): String = {
 
     def columnWithDefault(column: Column) =
-      scalaPropWithComment(settings.rootPackage, column) + " = " + columnDefault(scalaPropType(settings.rootPackage, column))
+      scalaPropWithComment(settings.rootPackage, column) + " = " + columnDefault(
+        scalaPropType(settings.rootPackage, column),
+      )
 
     val columnList =
       table.columns
@@ -61,8 +63,7 @@ class ScalaCaseClassGenerator(settings: Settings) extends Generator(settings) {
         """import io.circe.{Decoder, Encoder}
           |import io.circe.generic.extras.semiauto._
           |import io.circe.generic.extras.Configuration""".stripMargin
-      }
-      else {
+      } else {
         ""
       }
 
@@ -93,6 +94,5 @@ class ScalaCaseClassGenerator(settings: Settings) extends Generator(settings) {
        |$companion
        |""".stripMargin
   }
-
 
 }

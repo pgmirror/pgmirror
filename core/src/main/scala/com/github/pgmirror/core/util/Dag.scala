@@ -25,7 +25,7 @@ object Dag {
     val discovered = new mutable.HashSet[T]
     val finished = new java.util.LinkedHashSet[T].asScala
 
-    def visitAll(nodes: Iterable[T]) = nodes foreach visit
+    def visitAll(nodes: Iterable[T]) = nodes.foreach(visit)
 
     def visit(node: T): Unit = {
       if (!discovered(node)) {
@@ -54,7 +54,7 @@ object Dag {
     val discovered = new mutable.HashSet[T]
     var finished: List[T] = Nil
 
-    def visitAll(nodes: Iterable[T]) = nodes foreach visit
+    def visitAll(nodes: Iterable[T]) = nodes.foreach(visit)
 
     def visit(node: T): Unit = {
       if (!discovered(node)) {
@@ -69,10 +69,10 @@ object Dag {
   }
 
   final class Cyclic(val value: Any, val all: List[Any], val complete: Boolean)
-    extends Exception(
-      "Cyclic reference involving " +
-        (if (complete) all.mkString("\n   ", "\n   ", "") else value)
-    ) {
+      extends Exception(
+        "Cyclic reference involving " +
+          (if (complete) all.mkString("\n   ", "\n   ", "") else value),
+      ) {
     def this(value: Any) = this(value, value :: Nil, false)
 
     override def toString = getMessage

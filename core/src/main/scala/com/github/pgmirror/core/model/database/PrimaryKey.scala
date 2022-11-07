@@ -7,7 +7,7 @@ case class PrimaryKey(
   tableSchema: String,
   tableName: String,
   columnName: String,
-  keySeq: Int
+  keySeq: Int,
 )
 
 object PrimaryKey {
@@ -15,22 +15,19 @@ object PrimaryKey {
     val pksRs = connection.getMetaData.getPrimaryKeys(null, tableSchema, tableName)
     try {
       val res = mutable.ListBuffer[PrimaryKey]()
-      while(pksRs.next()) {
+      while (pksRs.next()) {
         res.append(
           PrimaryKey(
             tableSchema = pksRs.getString("TABLE_SCHEM"),
             tableName = pksRs.getString("TABLE_NAME"),
             columnName = pksRs.getString("COLUMN_NAME"),
-            keySeq = pksRs.getInt("KEY_SEQ")
-          )
+            keySeq = pksRs.getInt("KEY_SEQ"),
+          ),
         )
       }
       res.toList
-    }
-    finally {
+    } finally {
       pksRs.close()
     }
   }
 }
-
-

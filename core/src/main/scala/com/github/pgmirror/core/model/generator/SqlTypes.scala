@@ -41,8 +41,7 @@ object SqlTypes {
   Column(public,alltypes,c34,34,,true,false,2003,_text,None)                                           Types.ARRAY
   Column(public,alltypes,some_custom_type,35,,true,false,2002,"opendata"."my_custom_type",None)        Types.STRUCT
   Column(public,alltypes,some_custom_type_array,36,,true,false,1111,"opendata"."_my_custom_type",None) Types.OTHER
-  */
-
+   */
 
   /* H2
   Column(public,alltypes,c1,1,,true,false,-5,bigint,Some())                                                                                   Types.BIGINT
@@ -108,59 +107,61 @@ object SqlTypes {
     packagePrefix: String,
     dbDataType: String,
   ): Try[ResolvedType] = {
-      dbDataType match {
-        case "bigint"                      => Success(longType)
-        case "int8"                        => Success(longType)
-        case "bigserial"                   => Success(longType)
-        case "boolean"                     => Success(boolType)
-        case "bool"                        => Success(boolType)
-        case "integer"                     => Success(intType)
-        case "int"                         => Success(intType)
-        case "int4"                        => Success(intType)
-        case "smallint"                    => Success(intType)
-        case "int2"                        => Success(intType)
-        case "smallserial"                 => Success(intType)
-        case "serial"                      => Success(intType)
-        case "double"                      => Success(doubleType)
-        case "double precision"            => Success(doubleType)
-        case "float8"                      => Success(doubleType)
-        case "real"                        => Success(floatType)
-        case "float4"                      => Success(floatType)
-        case "decimal"                     => Success(decimalType)
-        case "money"                       => Success(decimalType)
-        case "numeric"                     => Success(decimalType)
-        case "bytea"                       => Success(byteArrayType)
-        case "character"                   => Success(stringType)
-        case "character varying"           => Success(stringType)
-        case "varchar"                     => Success(stringType)
-        case "bpchar"                      => Success(stringType)
-        case "text"                        => Success(stringType)
-        case "date"                        => Success(localDateType)
-        case "time"                        => Success(localTimeType)
-        case "timetz"                      => Success(localTimeType)
-        case "time with time zone"         => Success(localTimeType)
-        case "timestamp"                   => Success(instantType)
-        case "timestamptz"                 => Success(instantType)
-        case "timestamp with time zone"    => Success(instantType)
-        case "timestamp without time zone" => Success(instantType)
-        case "uuid"                        => Success(uuidType)
-        case "json"                        => Success(jsonType)
-        case "jsonb"                       => Success(jsonType)
-        case "inet"                        => Success(inetType)
+    dbDataType match {
+      case "bigint"                      => Success(longType)
+      case "int8"                        => Success(longType)
+      case "bigserial"                   => Success(longType)
+      case "boolean"                     => Success(boolType)
+      case "bool"                        => Success(boolType)
+      case "integer"                     => Success(intType)
+      case "int"                         => Success(intType)
+      case "int4"                        => Success(intType)
+      case "smallint"                    => Success(intType)
+      case "int2"                        => Success(intType)
+      case "smallserial"                 => Success(intType)
+      case "serial"                      => Success(intType)
+      case "double"                      => Success(doubleType)
+      case "double precision"            => Success(doubleType)
+      case "float8"                      => Success(doubleType)
+      case "real"                        => Success(floatType)
+      case "float4"                      => Success(floatType)
+      case "decimal"                     => Success(decimalType)
+      case "money"                       => Success(decimalType)
+      case "numeric"                     => Success(decimalType)
+      case "bytea"                       => Success(byteArrayType)
+      case "character"                   => Success(stringType)
+      case "character varying"           => Success(stringType)
+      case "varchar"                     => Success(stringType)
+      case "bpchar"                      => Success(stringType)
+      case "text"                        => Success(stringType)
+      case "date"                        => Success(localDateType)
+      case "time"                        => Success(localTimeType)
+      case "timetz"                      => Success(localTimeType)
+      case "time with time zone"         => Success(localTimeType)
+      case "timestamp"                   => Success(instantType)
+      case "timestamptz"                 => Success(instantType)
+      case "timestamp with time zone"    => Success(instantType)
+      case "timestamp without time zone" => Success(instantType)
+      case "uuid"                        => Success(uuidType)
+      case "json"                        => Success(jsonType)
+      case "jsonb"                       => Success(jsonType)
+      case "inet"                        => Success(inetType)
 
-        // Simple arrays of built-in types
-        case typeToParse if typeToParse.startsWith("_") =>
-          typeMapping(
-            packagePrefix,
-            typeToParse.replaceFirst("_", "")
-          ).map(tpe => ResolvedType(s"Array[${tpe.modelType}]", tpe.udt))
+      // Simple arrays of built-in types
+      case typeToParse if typeToParse.startsWith("_") =>
+        typeMapping(
+          packagePrefix,
+          typeToParse.replaceFirst("_", ""),
+        ).map(tpe => ResolvedType(s"Array[${tpe.modelType}]", tpe.udt))
 
-        // TODO UDTs and arrays od UDTs
-        case _ =>
-          Failure(new Exception(
+      // TODO UDTs and arrays od UDTs
+      case _ =>
+        Failure(
+          new Exception(
             s"Mapping for $dbDataType not found!",
-          ))
+          ),
+        )
 
-      }
     }
+  }
 }
