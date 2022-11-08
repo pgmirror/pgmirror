@@ -92,6 +92,7 @@ object SqlTypes {
   private val localDateType = ResolvedType("java.time.LocalDate")
   private val localTimeType = ResolvedType("java.time.LocalTime")
   private val instantType = ResolvedType("java.time.Instant")
+  private val localDateTimeType = ResolvedType("java.time.LocalDateTime")
 
   private val byteArrayType = ResolvedType("Array[Byte]")
 
@@ -138,10 +139,10 @@ object SqlTypes {
       case "time"                        => Success(localTimeType)
       case "timetz"                      => Success(localTimeType)
       case "time with time zone"         => Success(localTimeType)
-      case "timestamp"                   => Success(instantType)
+      case "timestamp"                   => Success(localDateTimeType)
       case "timestamptz"                 => Success(instantType)
       case "timestamp with time zone"    => Success(instantType)
-      case "timestamp without time zone" => Success(instantType)
+      case "timestamp without time zone" => Success(localDateTimeType)
       case "uuid"                        => Success(uuidType)
       case "json"                        => Success(jsonType)
       case "jsonb"                       => Success(jsonType)
