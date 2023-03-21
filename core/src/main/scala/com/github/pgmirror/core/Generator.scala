@@ -27,7 +27,7 @@ abstract class Generator(val settings: Settings) {
 
     val rootOutputDir: File = createRootOutputDir(rootPath, rootPackage)
 
-    val allTableFiles = tables.flatMap(generateForTable(_, foreignKeys))
+    val allTableFiles = tables.flatMap(generateForTable)
     val allViewFiles = views.flatMap(generateForView)
     val utilFile = generateUtil
 
@@ -54,10 +54,9 @@ abstract class Generator(val settings: Settings) {
   /** Generates zero or more files for a given table.
     *
     * @param table The table the code is generated for.
-    * @param foreignKeys List of ALL foreign keys in the schema.
     * @return List of GeneratedFile containing the path and contents for each file.
     */
-  def generateForTable(table: Table, foreignKeys: List[ForeignKey]): List[GeneratedFile]
+  def generateForTable(table: Table): List[GeneratedFile]
 
   /** Generates zero or more files for a given view.
     *

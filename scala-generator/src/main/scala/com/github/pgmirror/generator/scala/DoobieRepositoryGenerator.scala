@@ -64,7 +64,6 @@ class DoobieRepositoryGenerator(settings: Settings) extends Generator(settings) 
 
   override def generateForTable(
     table: Table,
-    foreignKeys: List[ForeignKey],
   ): List[GeneratedFile] = {
     System.out.println(s"Processing table: ${table.nameWithSchema}")
 

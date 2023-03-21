@@ -1,6 +1,6 @@
 package com.github.pgmirror.generator.scala
 
-import com.github.pgmirror.core.model.generator.{Column, Columns, ForeignKey, NamedWithSchema, Table, View}
+import com.github.pgmirror.core.model.generator._
 import com.github.pgmirror.core.{GeneratedFile, Generator, Names, Settings}
 import com.github.pgmirror.generator.scala.ScalaCommon._
 
@@ -14,7 +14,7 @@ class ScalaCaseClassGenerator(settings: Settings) extends Generator(settings) {
     * @param foreignKeys List of ALL foreign keys in the schema.
     * @return List of GeneratedFile containing the path and contents for each file.
     */
-  override def generateForTable(table: Table, foreignKeys: List[ForeignKey]): List[GeneratedFile] =
+  override def generateForTable(table: Table): List[GeneratedFile] =
     generateCaseClass(table)
 
   /** Generates zero or more files for a given view.

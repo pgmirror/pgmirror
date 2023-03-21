@@ -17,9 +17,9 @@ lazy val core = (project in file("core"))
     crossScalaVersions := supportedScalaVersions,
     name               := "pgmirror-core",
     libraryDependencies ++= Seq(
-      "org.postgresql" % "postgresql" % "42.5.0",
+      "org.postgresql" % "postgresql" % "42.5.4",
       "com.h2database" % "h2"         % "2.1.214",
-      "org.scalatest" %% "scalatest"  % "3.2.14" % Test,
+      "org.scalatest" %% "scalatest"  % "3.2.15" % Test,
     ),
   )
 
@@ -28,7 +28,7 @@ lazy val scala = (project in file("scala-generator"))
     crossScalaVersions := supportedScalaVersions,
     name               := "pgmirror-scala-generator",
     libraryDependencies ++= Seq(
-      "org.scalatest" %% "scalatest" % "3.2.14" % Test,
+      "org.scalatest" %% "scalatest" % "3.2.15" % Test,
     ),
   )
   .dependsOn(core)
@@ -38,11 +38,6 @@ lazy val pgmirror = (project in file("."))
   .settings(
     crossScalaVersions := Nil,
     publish / skip     := true,
-    libraryDependencies ++= Seq(
-      "org.tpolecat" %% "doobie-core"           % "1.0.0-RC2",
-      "org.tpolecat" %% "doobie-postgres"       % "1.0.0-RC2",
-      "org.tpolecat" %% "doobie-postgres-circe" % "1.0.0-RC2",
-    ),
     scalacOptions ++= Seq(
       "-deprecation"
     )
