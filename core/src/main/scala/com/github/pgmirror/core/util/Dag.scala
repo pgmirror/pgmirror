@@ -8,12 +8,14 @@ package com.github.pgmirror.core.util
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
+//noinspection ScalaUnusedSymbol
 trait Dag[Node <: Dag[Node]] { self: Node =>
 
   def dependencies: Iterable[Node]
   def topologicalSort = Dag.topologicalSort(self)(_.dependencies)
 }
 
+//noinspection ScalaWeakerAccess,ScalaUnusedSymbol
 object Dag {
 
   import scala.collection.{mutable, JavaConverters}
