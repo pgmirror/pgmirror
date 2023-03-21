@@ -13,10 +13,14 @@ object ScalaCommon {
 
   def scalaPropType(rootPackage: String, column: Column): String = {
     if (column.isNullable) {
-      s"""Option[${modelType(rootPackage, column)}]"""
+      renderOptionalProperty(rootPackage, column)
     } else {
       s"""${modelType(rootPackage, column)}"""
     }
+  }
+
+  private def renderOptionalProperty(rootPackage: String, column: Column) = {
+    s"""Option[${modelType(rootPackage, column)}]"""
   }
 
   def scalaPropName(column: Column): String = {
