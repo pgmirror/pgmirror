@@ -69,16 +69,16 @@ class ScalaCaseClassGenerator(settings: Settings) extends Generator(settings) {
 
     val companion =
       if (settings.generateCirce) {
-        """object $className {
-          |
-          |  implicit val customConfig: Configuration = Configuration.default.withSnakeCaseMemberNames
-          |
-          |  implicit val circeDecoder: Decoder[$className] = deriveConfiguredDecoder
-          |
-          |  implicit val circeEncoder: Encoder[$className] = deriveConfiguredEncoder
-          |
-          |}
-          |""".stripMargin
+        s"""object $className {
+           |
+           |  implicit val customConfig: Configuration = Configuration.default.withSnakeCaseMemberNames
+           |
+           |  implicit val circeDecoder: Decoder[$className] = deriveConfiguredDecoder
+           |
+           |  implicit val circeEncoder: Encoder[$className] = deriveConfiguredEncoder
+           |
+           |}
+           |""".stripMargin
       } else {
         ""
       }
